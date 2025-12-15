@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'library/library_page.dart';
-// import 'review/review_page.dart';
+import 'review/review_page.dart';
 // import 'home/home_page.dart';
 // import 'community/community_page.dart';
 // import 'profile/profile_page.dart';
@@ -26,7 +26,7 @@ class _MainPageState extends State<MainPage> {
     final List<Widget> pages = [
       // const HomePage(),      // Index 0
       const LibraryPage(),   // Index 1
-      // const ReviewPage(),    // Index 2
+      const ReviewPage(),    // Index 2
       // const CommunityPage(), // Index 3
       // const ProfilePage(),   // Index 4
     ];
