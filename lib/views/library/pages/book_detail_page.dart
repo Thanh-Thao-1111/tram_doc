@@ -162,21 +162,6 @@ class BookDetailPage extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AddNotePage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text("Thêm mới"),
-            ),
-          )
         ],
       ),
     );
