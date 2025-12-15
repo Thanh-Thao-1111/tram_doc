@@ -1,43 +1,86 @@
 import 'package:flutter/material.dart';
 import 'library/library_page.dart';
+// import 'review/review_page.dart';
+// import 'home/home_page.dart';
+// import 'community/community_page.dart';
+// import 'profile/profile_page.dart';
 
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
+  const MainPage({super.key});
 
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
 class _MainPageState extends State<MainPage> {
+  // Biến này để lưu tab hiện tại, nằm ngay trong UI
   int _currentIndex = 0;
 
-  final _pages = const [
-  //   HomePage(),
-   LibraryPage(), 
-  //   ReviewPage(),
-  //   CommunityPage(),
-  //   ProfilePage(),
- ];
+  // Màu sắc UI
+  static const Color activeColor = Color(0xFF3BA66B);
+  static const Color inactiveColor = Color(0xFF9CA3AF);
 
   @override
   Widget build(BuildContext context) {
+    // Danh sách các màn hình
+    final List<Widget> pages = [
+      // const HomePage(),      // Index 0
+      const LibraryPage(),   // Index 1
+      // const ReviewPage(),    // Index 2
+      // const CommunityPage(), // Index 3
+      // const ProfilePage(),   // Index 4
+    ];
+
     return Scaffold(
+      // Giữ trạng thái trang khi chuyển tab
       body: IndexedStack(
         index: _currentIndex,
-        children: _pages,
+        children: pages,
       ),
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
-          setState(() => _currentIndex = index);
+          // Dùng setState để cập nhật UI ngay lập tức
+          setState(() {
+            _currentIndex = index;
+          });
         },
         type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        elevation: 10,
+        
+        selectedItemColor: activeColor,
+        unselectedItemColor: inactiveColor,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
+
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Thư viện'),
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Ôn tập'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Cộng đồng'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Hồ sơ'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Trang chủ',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book_outlined),
+            activeIcon: Icon(Icons.menu_book),
+            label: 'Thư viện',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bookmark_border),
+            activeIcon: Icon(Icons.bookmark),
+            label: 'Ôn tập',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.groups_outlined),
+            activeIcon: Icon(Icons.groups),
+            label: 'Cộng đồng',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Hồ sơ',
+          ),
         ],
       ),
     );
