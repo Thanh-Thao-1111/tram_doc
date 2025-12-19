@@ -11,6 +11,10 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   bool showName = true;
   String pronoun = 'Nữ';
+  String displayName = 'Alex Nguyen';
+  String location = '';
+  String bio = '';
+  String website = '';
 
   @override
   Widget build(BuildContext context) {
@@ -39,21 +43,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
           const SizedBox(height: 10),
 
-          _RowField(label: 'Tên Hiển Thị', rightText: 'Alex Nguyen', onTap: () {}),
+          _RowField(label: 'Tên Hiển Thị', rightText: displayName, onTap: () => _editField(context, 'Tên Hiển Thị', displayName, (v) => setState(() => displayName = v), validator: (s) {
+            if (s == null || s.trim().isEmpty) return 'Tên không được để trống';
+            return null;
+          })),
           _SwitchRow(
             label: 'Hiển thị Tên Hiển thị',
             value: showName,
             onChanged: (v) => setState(() => showName = v),
           ),
-          _RowField(label: 'Địa điểm', rightText: '', onTap: () {}),
-          _RowField(label: 'Giới thiệu', rightText: '', onTap: () {}),
+          _RowField(label: 'Địa điểm', rightText: location, onTap: () => _editField(context, 'Địa điểm', location, (v) => setState(() => location = v))),
+          _RowField(label: 'Giới thiệu', rightText: bio, onTap: () => _editField(context, 'Giới thiệu', bio, (v) => setState(() => bio = v))),
           _DropdownRow(
             label: 'Đại từ nhân xưng',
             value: pronoun,
             items: const ['Nam', 'Nữ', 'Khác'],
             onChanged: (v) => setState(() => pronoun = v ?? pronoun),
           ),
-          _RowField(label: 'Trang web cá nhân', rightText: '', onTap: () {}),
+          _RowField(label: 'Trang web cá nhân', rightText: website, onTap: () => _editField(context, 'Trang web cá nhân', website, (v) => setState(() => website = v), validator: (s) {
+            if (s == null || s.trim().isEmpty) return null;
+            final uri = Uri.tryParse(s);
+            if (uri == null || (!uri.hasScheme)) return 'Nhập URL hợp lệ (bao gồm http/https)';
+            return null;
+          }, keyboardType: TextInputType.url)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editField(BuildContext context, String label, String initialValue, ValueChanged<String> onSave,
+      {String? Function(String?)? validator, TextInputType keyboardType = TextInputType.text}) async {
+    final _formKey = GlobalKey<FormState>();
+    String value = initialValue;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(label),
+        content: Form(
+          key: _formKey,
+          child: TextFormField(
+            initialValue: initialValue,
+            keyboardType: keyboardType,
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+            validator: validator,
+            onChanged: (v) => value = v,
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Hủy')),
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState?.validate() ?? true) {
+                onSave(value);
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: const Text('Lưu'),
+          ),
         ],
       ),
     );
