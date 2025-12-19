@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 
-class OcrCapturePage extends StatelessWidget {
+class OcrCapturePage extends StatefulWidget {
   const OcrCapturePage({super.key});
 
+  @override
+  State<OcrCapturePage> createState() => _OcrCapturePageState();
+}
+
+  class _OcrCapturePageState extends State<OcrCapturePage> {
+    bool _isProcessing = false;
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          Container(color: Colors.black),
           Positioned(
             top: 50,
             left: 20,
@@ -55,6 +63,9 @@ class OcrCapturePage extends StatelessWidget {
                         _buildCorner(true, false),
                       ],
                     ),
+                    if (_isProcessing)
+                      const CircularProgressIndicator(color: Colors.green) // Hiện xoay xoay khi đang xử lý
+                    else
                     const Padding(
                       padding: EdgeInsets.all(8.0),
                       child: Text(
@@ -95,22 +106,35 @@ class OcrCapturePage extends StatelessWidget {
                 ),
 
                 // Nút Shutter (Chụp)
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                  ),
-                  child: Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
+                GestureDetector(
+                  onTap: () async {
+                    // Giả lập xử lý OCR
+                    setState(() => _isProcessing = true);
+                    
+                    // Đợi 1.5 giây cho giống thật
+                    await Future.delayed(const Duration(milliseconds: 1500));
 
+                    if (mounted) {
+                      // TRẢ VỀ KẾT QUẢ CHO TRANG TRƯỚC
+                      Navigator.pop(context, "Đây là đoạn văn bản được trích xuất từ hình ảnh thông qua công nghệ OCR.");
+                    }
+                  },
+                  child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                          ),
+                          child: Container(
+                            margin: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                ),
                 // Placeholder 
                 const SizedBox(width: 32),
               ],

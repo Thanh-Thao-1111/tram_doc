@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'widgets/library_book_item.dart';
 import 'pages/book_detail_page.dart';
+import '../../../viewmodels/library_viewmodel.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -12,15 +14,6 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Dữ liệu giả lập 
-  final List<_BookUi> dummyBooks = [
-    _BookUi('Nhà Giả Kim', 'Paulo Coelho', 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1483412266i/865.jpg'),
-    _BookUi('Tâm lý học về tiền', 'Morgan Housel', 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1635328224i/59495633.jpg'),
-    _BookUi('Đắc Nhân Tâm', 'Dale Carnegie', 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1442726934i/4865.jpg'),
-    _BookUi('Cánh buồm đỏ thắm', 'Alexander Grin', 'https://cdn0.fahasa.com/media/catalog/product/c/a/canh-buom-do-tham_1_1.jpg'),
-    _BookUi('Không gia đình', 'Hector Malot', 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Sans_famille_1889.jpg/250px-Sans_famille_1889.jpg'),
-    _BookUi('Harry Potter', 'J.K. Rowling', 'https://m.media-amazon.com/images/I/71Xq+KUVw0L._AC_UF1000,1000_QL80_.jpg'),
-  ];
 
   @override
   void initState() {
@@ -36,6 +29,9 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<LibraryViewModel>();
+    final books = viewModel.libraryBooks;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -70,15 +66,15 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildBookGrid(dummyBooks),
-          _buildBookGrid(dummyBooks.sublist(0, 3)),
-          _buildBookGrid(dummyBooks.sublist(3, 6)),
+          _buildBookGrid(books, viewModel),
+          _buildBookGrid(books.take(2).toList(), viewModel), 
+          _buildBookGrid(books.skip(2).toList(), viewModel),
         ],
       ),
     );
   }
 
-  Widget _buildBookGrid(List<_BookUi> books) {
+  Widget _buildBookGrid(List<Book> books, LibraryViewModel viewModel) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: GridView.builder(
@@ -91,11 +87,13 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
         ),
         itemBuilder: (context, index) {
           final book = books[index];
+
           return LibraryBookItem(
             title: book.title,
             author: book.author,
             imageUrl: book.imageUrl,
             onTap: () {
+              viewModel.setCurrentBook(book);
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const BookDetailPage()),
@@ -108,11 +106,3 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
   }
 }
 
-// Class nội bộ dùng tạm cho UI
-class _BookUi {
-  final String title;
-  final String author;
-  final String imageUrl;
-
-  _BookUi(this.title, this.author, this.imageUrl);
-}
