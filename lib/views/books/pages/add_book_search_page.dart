@@ -8,8 +8,13 @@ class AddBookSearchPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tìm kiếm sách'),
-        leading: const BackButton(),
+        centerTitle: true,
+        title: const Text('Thêm Sách Mới',style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+          ),
+        leading: const BackButton(color: Colors.black),
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),

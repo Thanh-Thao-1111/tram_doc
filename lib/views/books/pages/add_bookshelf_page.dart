@@ -7,8 +7,10 @@ class AddBookPreviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         leading: const BackButton(),
         title: const Text('Thêm sách vào kệ'),
+        titleTextStyle: const TextStyle(fontWeight: FontWeight.bold),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

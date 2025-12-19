@@ -69,8 +69,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Text('Địa chỉ email', style: _labelStyle()),
                 const SizedBox(height: 8),
                 TextFormField(
+                  key: const Key('emailField'),
                   controller: _emailController,
                   decoration: _inputDecoration('Nhập email của bạn'),
+                  validator: _validateEmail,
                 ),
 
                 const SizedBox(height: 20),
@@ -89,6 +91,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Text('Mật khẩu', style: _labelStyle()),
                 const SizedBox(height: 8),
                 TextFormField(
+                  key: const Key('passwordField'),
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: _inputDecoration(
@@ -106,6 +109,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Vui lòng nhập mật khẩu';
+                    }
+                    if (value.length < 8) {
+                      return 'Mật khẩu tối thiểu 8 ký tự';
+                    }
+
+                    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(value);
+                    final hasDigit = RegExp(r'\d').hasMatch(value);
+                    if (!hasLetter || !hasDigit) {
+                      return 'Mật khẩu phải có ít nhất 1 chữ cái và 1 chữ số';
+                    }
+
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 20),
@@ -114,6 +133,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Text('Xác nhận mật khẩu', style: _labelStyle()),
                 const SizedBox(height: 8),
                 TextFormField(
+                  key: const Key('confirmPasswordField'),
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
                   decoration: _inputDecoration(
@@ -132,6 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                   ),
+                  validator: _validateConfirmPassword,
                 ),
 
                 const SizedBox(height: 24),
@@ -177,7 +198,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
+                    key: const Key('signupButton'),
                     onPressed: () {
+                      if (!_formKey.currentState!.validate()) return;
+                      // TODO: call sign-up API
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
@@ -249,6 +273,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       ),
     );
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) return 'Vui lòng nhập email';
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    if (!emailRegex.hasMatch(value)) return 'Địa chỉ email không hợp lệ';
+    return null;
+  }
+
+  // Password validator was inlined in the password field's `validator` closure.
+
+  String? _validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) return 'Vui lòng nhập lại mật khẩu';
+    if (value != _passwordController.text) return 'Mật khẩu không khớp';
+    return null;
   }
 
   TextStyle _labelStyle() {

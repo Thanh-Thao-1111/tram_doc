@@ -135,11 +135,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Vui lòng nhập mật khẩu';
                     }
-                    if (value.length < 6) {
-                      return 'Mật khẩu tối thiểu 6 ký tự';
+                    if (value.length < 8) {
+                      return 'Mật khẩu tối thiểu 8 ký tự';
                     }
+
+                    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(value);
+                    final hasDigit = RegExp(r'\d').hasMatch(value);
+                    if (!hasLetter || !hasDigit) {
+                      return 'Mật khẩu phải có ít nhất 1 chữ cái và 1 chữ số';
+                    }
+
                     return null;
                   },
+
                 ),
 
                 const SizedBox(height: 12),

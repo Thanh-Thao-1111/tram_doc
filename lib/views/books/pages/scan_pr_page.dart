@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'add_bookshelf_page.dart';
 
 class ScanQrPage extends StatelessWidget {
   const ScanQrPage({super.key});
@@ -7,15 +8,18 @@ class ScanQrPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(),
-        title: const Text('Quét QR'),
+        centerTitle: true,
+        leading: const BackButton(color: Colors.black),
+        title: const Text('Quét Mã Vạch', style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: Stack(
         children: [
-          // Camera placeholder
           Container(color: Colors.black),
 
-          // Scan frame
           Center(
             child: Container(
               width: 240,
@@ -27,37 +31,26 @@ class ScanQrPage extends StatelessWidget {
             ),
           ),
 
-          // Bottom actions
           Positioned(
-            bottom: 32,
+            bottom: 40,
             left: 0,
             right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _CircleButton(icon: Icons.flash_on),
-                const SizedBox(width: 32),
-                _CircleButton(icon: Icons.image),
-              ],
+            child: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AddBookPreviewPage(),
+                    ),
+                  );
+                },
+                child: const Text('Giả lập quét xong'),
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CircleButton extends StatelessWidget {
-  final IconData icon;
-
-  const _CircleButton({required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: Colors.white24,
-      child: Icon(icon, color: Colors.white),
     );
   }
 }
