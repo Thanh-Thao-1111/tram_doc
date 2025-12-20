@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import 'views/homes/pages/welcome_page.dart';
 import 'package:provider/provider.dart';
 
 import 'viewmodels/library_viewmodel.dart';
@@ -11,26 +14,27 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static const Color primaryGreen = Color(0xFF3BA66B);
+
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        // Khởi tạo LibraryViewModel để dùng chung
-        ChangeNotifierProvider(create: (_) => LibraryViewModel()),
-        
-        // Khai báo thêm các ViewModel khác nếu cần
-        // ChangeNotifierProvider(create: (_) => HomeViewModel()),
-        // ChangeNotifierProvider(create: (_) => MainViewModel()),
-      ],
-      child: MaterialApp(
-        title: 'Trạm Đọc',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.green,
-          useMaterial3: true,
+    return MaterialApp(
+      title: 'Trạm Đọc',
+      debugShowCheckedModeBanner: false,
+
+      theme: ThemeData(
+        primaryColor: primaryGreen,
+        scaffoldBackgroundColor: Colors.white,
+        fontFamily: GoogleFonts.inter().fontFamily,
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          backgroundColor: Colors.white,
+          iconTheme: IconThemeData(color: Colors.black),
         ),
-      home: MainPage(),
       ),
+
+      /// MÀN HÌNH KHỞI ĐẦU
+      home: WelcomeScreen(),
     );
   }
 }
