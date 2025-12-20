@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/profile_tokens.dart';
+import '../../../viewmodels/profile_viewmodel.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -43,10 +44,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
           const SizedBox(height: 10),
 
-          _RowField(label: 'Tên Hiển Thị', rightText: displayName, onTap: () => _editField(context, 'Tên Hiển Thị', displayName, (v) => setState(() => displayName = v), validator: (s) {
-            if (s == null || s.trim().isEmpty) return 'Tên không được để trống';
-            return null;
-          })),
+          _RowField(label: 'Tên Hiển Thị', rightText: displayName, onTap: () => _editField(context, 'Tên Hiển Thị', displayName, (v) => setState(() => displayName = v), validator: ProfileViewModel.validateDisplayName)),
           _SwitchRow(
             label: 'Hiển thị Tên Hiển thị',
             value: showName,
@@ -60,12 +58,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             items: const ['Nam', 'Nữ', 'Khác'],
             onChanged: (v) => setState(() => pronoun = v ?? pronoun),
           ),
-          _RowField(label: 'Trang web cá nhân', rightText: website, onTap: () => _editField(context, 'Trang web cá nhân', website, (v) => setState(() => website = v), validator: (s) {
-            if (s == null || s.trim().isEmpty) return null;
-            final uri = Uri.tryParse(s);
-            if (uri == null || (!uri.hasScheme)) return 'Nhập URL hợp lệ (bao gồm http/https)';
-            return null;
-          }, keyboardType: TextInputType.url)),
+          _RowField(label: 'Trang web cá nhân', rightText: website, onTap: () => _editField(context, 'Trang web cá nhân', website, (v) => setState(() => website = v), validator: ProfileViewModel.validateUrl, keyboardType: TextInputType.url)),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/profile_tokens.dart';
 import '../widgets/section_title.dart';
+import '../../../viewmodels/profile_viewmodel.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -32,32 +33,19 @@ class _AccountPageState extends State<AccountPage> {
             label: 'Họ và tên',
             value: name,
             icon: Icons.person_outline,
-            onTap: () => _showEditFieldDialog(context, 'Họ và tên', name, (v) => setState(() => name = v), validator: (s) {
-              if (s == null || s.trim().isEmpty) return 'Tên không được để trống';
-              return null;
-            }),
+            onTap: () => _showEditFieldDialog(context, 'Họ và tên', name, (v) => setState(() => name = v), validator: ProfileViewModel.validateDisplayName),
           ),
           _ReadonlyField(
             label: 'Email',
             value: email,
             icon: Icons.email_outlined,
-            onTap: () => _showEditFieldDialog(context, 'Email', email, (v) => setState(() => email = v), validator: (s) {
-              if (s == null || s.trim().isEmpty) return 'Email không được để trống';
-              final emailReg = RegExp(r"^[\w\-.]+@[\w\-]+\.[a-zA-Z]{2,}");
-              if (!emailReg.hasMatch(s)) return 'Email không hợp lệ';
-              return null;
-            }, keyboardType: TextInputType.emailAddress),
+            onTap: () => _showEditFieldDialog(context, 'Email', email, (v) => setState(() => email = v), validator: ProfileViewModel.validateEmail, keyboardType: TextInputType.emailAddress),
           ),
           _ReadonlyField(
             label: 'Ngày sinh',
             value: dob,
             icon: Icons.calendar_month_outlined,
-            onTap: () => _showEditFieldDialog(context, 'Ngày sinh (dd/MM/yyyy)', dob, (v) => setState(() => dob = v), validator: (s) {
-              if (s == null || s.trim().isEmpty) return 'Ngày sinh không được để trống';
-              final dReg = RegExp(r'^\\d{2}/\\d{2}/\\d{4}\$');
-              if (!dReg.hasMatch(s)) return 'Định dạng ngày sinh: dd/MM/yyyy';
-              return null;
-            }, keyboardType: TextInputType.datetime),
+            onTap: () => _showEditFieldDialog(context, 'Ngày sinh (dd/MM/yyyy)', dob, (v) => setState(() => dob = v), validator: ProfileViewModel.validateDob, keyboardType: TextInputType.datetime),
           ),
 
           const SectionTitle('Bảo mật'),
@@ -152,25 +140,21 @@ class _AccountPageState extends State<AccountPage> {
               TextFormField(
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Vui lòng nhập mật khẩu hiện tại' : null,
+                validator: ProfileViewModel.validateCurrentPassword,
                 onChanged: (v) => current = v,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu mới';
-                  if (v.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự';
-                  return null;
-                },
+                validator: ProfileViewModel.validatePassword,
                 onChanged: (v) => next = v,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
-                validator: (v) => (v != next) ? 'Mật khẩu xác nhận không khớp' : null,
+                validator: (v) => ProfileViewModel.validateConfirmPassword(v, next),
                 onChanged: (v) => confirm = v,
               ),
             ],
