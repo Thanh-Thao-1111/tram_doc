@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'community/community_page.dart';
 import 'profile/profile_page.dart';
+import 'library/library_page.dart';
+// import 'review/review_page.dart';
+import 'homes/home_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -18,35 +21,39 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    // ĐỦ 5 TAB – 3 TAB ĐẦU KHÔNG UI
+    // Danh sách các màn hình
     final List<Widget> pages = [
-      const SizedBox(),        // Trang chủ
-      const SizedBox(),        // Thư viện
-      const SizedBox(),        // Ôn tập
-      const CommunityPage(),   // Cộng đồng (UI thật)
-      const ProfilePage(),     // Hồ sơ (UI thật)
+      const HomePage(),      // Index 0
+      const LibraryPage(),   // Index 1
+      // const ReviewPage(),    // Index 2
+      const CommunityPage(), // Index 3
+      const ProfilePage(),   // Index 4
     ];
 
-    // chống lỗi index khi hot reload
-    final int safeIndex = _currentIndex.clamp(0, pages.length - 1);
-
     return Scaffold(
+      // Giữ trạng thái trang khi chuyển tab
       body: IndexedStack(
-        index: safeIndex,
+        index: _currentIndex,
         children: pages,
       ),
+
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: safeIndex,
+        currentIndex: _currentIndex,
         onTap: (index) {
+          // Dùng setState để cập nhật UI ngay lập tức
           setState(() {
             _currentIndex = index;
           });
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 10,
+        
         selectedItemColor: activeColor,
         unselectedItemColor: inactiveColor,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
+
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -64,8 +71,8 @@ class _MainPageState extends State<MainPage> {
             label: 'Ôn tập',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            activeIcon: Icon(Icons.group),
+            icon: Icon(Icons.groups_outlined),
+            activeIcon: Icon(Icons.groups),
             label: 'Cộng đồng',
           ),
           BottomNavigationBarItem(
