@@ -1,12 +1,34 @@
 import 'package:flutter/material.dart';
-import 'ocr_capture_page.dart'; 
+import 'ocr_capture_page.dart';
 import 'create_flashcard_page.dart';
+import 'package:provider/provider.dart';
+import '../../../viewmodels/library_viewmodel.dart';
 
-class AddNotePage extends StatelessWidget {
+class AddNotePage extends StatefulWidget {
   const AddNotePage({super.key});
 
   @override
+  State<AddNotePage> createState() => _AddNotePageState();
+}
+
+class _AddNotePageState extends State<AddNotePage> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _contentController = TextEditingController();
+
+  String _content = '';
+  int? _pageNumber;
+
+  @override
+  void dispose() {
+    _contentController.dispose(); // Nhớ dispose
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final viewModel = context.read<LibraryViewModel>();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -27,7 +49,18 @@ class AddNotePage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () {},
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                _formKey.currentState!.save();
+
+                viewModel.addNote(_content, _pageNumber);
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã lưu ghi chú!')),
+                );
+              }
+            },
             child: const Text(
               "Lưu",
               style: TextStyle(
@@ -87,41 +120,65 @@ class AddNotePage extends StatelessWidget {
 
           // Vùng nhập liệu nội dung
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  const TextField(
-                    decoration: InputDecoration(
-                      hintText: "Nhập ghi chú của bạn...",
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                    style: TextStyle(fontSize: 18),
-                    maxLines: null, // Cho phép xuống dòng thoải mái
-                    keyboardType: TextInputType.multiline,
-                  ),
-                  const Spacer(),
-                  // Input số trang
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const TextField(
+            child: Form(
+              key: _formKey,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _contentController,
                       decoration: InputDecoration(
-                        hintText: "Trang 150",
+                        hintText: "Nhập ghi chú của bạn...",
                         border: InputBorder.none,
-                        icon: Icon(
-                          Icons.bookmarks_outlined,
-                          color: Colors.grey,
-                          size: 20,
+                        hintStyle: TextStyle(fontSize: 18, color: Colors.grey),
+                        errorStyle: TextStyle(color: Colors.redAccent),
+                      ),
+                      style: TextStyle(fontSize: 18),
+                      maxLines: null, // Cho phép xuống dòng thoải mái
+                      keyboardType: TextInputType.multiline,
+
+                      validator: (value) => viewModel.validateContent(
+                        value,
+                        fieldName: "Ghi chú",
+                      ),
+                      onSaved: (value) => _content = value!.trim(),
+                      onChanged: (value) => _content = value,
+                    ),
+                    const Spacer(),
+                    // Input số trang
+                    Container(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                          hintText: "Nhập số trang",
+                          border: InputBorder.none,
+                          icon: Icon(
+                            Icons.bookmarks_outlined,
+                            color: Colors.grey,
+                            size: 20,
+                          ),
                         ),
+                        keyboardType: TextInputType.number,
+
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return null;
+                          return viewModel.validatePageNumber(value);
+                        },
+                        onSaved: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            _pageNumber = int.parse(value);
+                          }
+                        },
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -146,13 +203,25 @@ class AddNotePage extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const OcrCapturePage(),
                         ),
                       );
+                      if (result != null && result is String) {
+                        setState(() {
+                          _contentController.text = result; // Điền vào ô nhập
+                          _content = result; // Cập nhật biến
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Đã trích xuất văn bản!"),
+                          ),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),

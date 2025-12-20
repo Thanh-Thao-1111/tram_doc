@@ -1,15 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'add_note_page.dart';
 import 'review_book_page.dart';
+import '../../../viewmodels/library_viewmodel.dart';
 import '../widgets/note_item.dart';
 import '../widgets/rating_star.dart';
 
-class BookDetailPage extends StatelessWidget {
+class BookDetailPage extends StatefulWidget {
   const BookDetailPage({super.key});
+
+  @override
+  State<BookDetailPage> createState() => _BookDetailPageState();
+}
+
+  class _BookDetailPageState extends State<BookDetailPage> {
+
+  // Hàm hiển thị Dialog cập nhật tiến độ
+  void _showUpdateProgressDialog(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
+    final viewModel = context.read<LibraryViewModel>(); // Dùng read để gọi hàm
+    
+    // Lấy dữ liệu hiện tại từ VM
+    int current = viewModel.currentPage;
+    int total = viewModel.totalPages;
+    int newPage = current;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Cập nhật tiến độ"),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            initialValue: current.toString(),
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: "Số trang đang đọc",
+              border: OutlineInputBorder(),
+              suffixText: "trang",
+            ),
+            // 3. GỌI VALIDATE TỪ VIEWMODEL
+            validator: (value) => viewModel.validatePageNumber(value, maxPage: total),
+            onSaved: (value) => newPage = int.parse(value!),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                formKey.currentState!.save();
+                
+                // 4. GỌI HÀM UPDATE CỦA VIEWMODEL
+                viewModel.updateReadingProgress(newPage);
+                
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Đã cập nhật tiến độ đọc!")),
+                );
+              }
+            },
+            child: const Text("Lưu", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+          )
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF4CAF50);
+
+    final viewModel = context.watch<LibraryViewModel>();
 
     return DefaultTabController(
       length: 3,
@@ -108,7 +173,7 @@ class BookDetailPage extends StatelessWidget {
             Expanded(
               child: TabBarView(
                 children: [
-                  _buildInfoTab(context, primaryColor),
+                  _buildInfoTab(context,viewModel, primaryColor),
                   _buildNotesTab(context),
                   _buildCommunityTab(context),
                 ],
@@ -121,7 +186,12 @@ class BookDetailPage extends StatelessWidget {
   }
 
   // --- TAB 1: THÔNG TIN ---
-  Widget _buildInfoTab(BuildContext context, Color primaryColor) {
+  Widget _buildInfoTab(BuildContext context, LibraryViewModel viewModel, Color primaryColor) {
+
+    int current = viewModel.currentPage;
+    int total = viewModel.totalPages;
+    double progress = (total == 0) ? 0 : (current / total);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -134,9 +204,9 @@ class BookDetailPage extends StatelessWidget {
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text("Đã đọc 50%", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-              Text("Trang 150 / 300", style: TextStyle(color: Colors.grey)),
+            children: [
+              Text("Đã đọc ${(progress * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+              Text("Trang $current / $total", style: const TextStyle(color: Colors.grey)),
             ],
           ),
           const SizedBox(height: 8),
@@ -147,12 +217,16 @@ class BookDetailPage extends StatelessWidget {
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
           ),
+
           const SizedBox(height: 24),
+
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                _showUpdateProgressDialog(context);
+              },
               icon: const Icon(Icons.edit, color: Colors.green),
               label: const Text("Cập nhật tiến độ", style: TextStyle(color: Colors.green, fontSize: 16, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
