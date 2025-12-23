@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'views/homes/pages/welcome_page.dart';
+import 'package:provider/provider.dart';
+
+import 'viewmodels/library_viewmodel.dart';
+import 'views/main_page.dart';
 
 void main() {
   runApp(const MyApp());
