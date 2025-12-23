@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-//import 'library/library_page.dart';
-//import 'review/review_page.dart';
+
+import 'community/community_page.dart';
+import 'profile/profile_page.dart';
+import 'library/library_page.dart';
+import 'review/review_page.dart';
 import 'homes/home_page.dart';
-// import 'community/community_page.dart';
-// import 'profile/profile_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -13,10 +14,8 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  // Biến này để lưu tab hiện tại, nằm ngay trong UI
   int _currentIndex = 0;
 
-  // Màu sắc UI
   static const Color activeColor = Color(0xFF3BA66B);
   static const Color inactiveColor = Color(0xFF9CA3AF);
 
@@ -25,10 +24,10 @@ class _MainPageState extends State<MainPage> {
     // Danh sách các màn hình
     final List<Widget> pages = [
       const HomeScreen(),      // Index 0
-      // const LibraryPage(),   // Index 1
-      // const ReviewPage(),    // Index 2
-      // const CommunityPage(), // Index 3
-      // const ProfilePage(),   // Index 4
+      const LibraryPage(),   // Index 1
+      const ReviewPage(),    // Index 2
+      const CommunityPage(), // Index 3
+      const ProfilePage(),   // Index 4
     ];
 
     return Scaffold(
