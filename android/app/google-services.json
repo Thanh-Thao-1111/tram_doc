@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "776723961540",
+    "project_id": "reading-885c2",
+    "storage_bucket": "reading-885c2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:776723961540:android:ecd363756b2106c3889b91",
+        "android_client_info": {
+          "package_name": "com.example.tram_doc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpZbsX6TrFox6Ft5uDERwMS5Nl7n_XVag"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

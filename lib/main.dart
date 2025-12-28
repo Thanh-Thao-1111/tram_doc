@@ -1,13 +1,19 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'views/homes/pages/welcome_page.dart';
 import 'package:provider/provider.dart';
 
 import 'viewmodels/library_viewmodel.dart';
 import 'views/main_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
