@@ -23,7 +23,7 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     // Danh sách các màn hình
     final List<Widget> pages = [
-      const HomeScreen(),      // Index 0
+       HomeScreen(),      // Index 0
       const LibraryPage(),   // Index 1
       const ReviewPage(),    // Index 2
       const CommunityPage(), // Index 3
