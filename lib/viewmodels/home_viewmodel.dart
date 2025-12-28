@@ -34,16 +34,38 @@ class HomeViewModel {
   /// Gợi ý sách
   final List<BookModel> suggestedBooks = [
     BookModel(
+      id: 'suggest_2',
       title: 'The Power of Habit',
       author: 'Charles Duhigg',
       imageUrl:
           'https://images-na.ssl-images-amazon.com/images/I/71sBtM3Yi5L.jpg',
+      pageCount: 300,
     ),
     BookModel(
+      id: 'suggest_1',
       title: 'Deep Work',
       author: 'Cal Newport',
       imageUrl:
           'https://bizweb.dktcdn.net/100/370/339/products/khong-gia-dinh.jpg',
+      pageCount: 370,
     ),
   ];
+}
+
+class UpdateItem {
+  final String user;
+  final String action;
+  final String bookName;
+  final String time;
+  final String avatarUrl;
+  final String bookCoverUrl;
+
+  UpdateItem({
+    required this.user,
+    required this.action,
+    required this.bookName,
+    required this.time,
+    required this.avatarUrl,
+    required this.bookCoverUrl,
+  });
 }
