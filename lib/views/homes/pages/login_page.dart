@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import '../../main_page.dart';
 import 'signup_page.dart';
 import 'forgot_password_page.dart';
 import '../home_page.dart';
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) =>  MainPage()),
     );
   }
 

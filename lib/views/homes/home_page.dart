@@ -2,71 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tram_doc/core/assets/app_images.dart';
 
+import '../../models/book_model.dart';
+import '../../viewmodels/home_viewmodel.dart';
+
 import '../books/add_book_page.dart';
 import '../books/pages/add_bookshelf_page.dart';
 import 'pages/notification_page.dart';
-
-class UpdateItem {
-  final String user;
-  final String action;
-  final String bookName;
-  final String time;
-
-  UpdateItem({
-    required this.user,
-    required this.action,
-    required this.bookName,
-    required this.time,
-  });
-}
-
-class SuggestedBook {
-  final String title;
-  final String author;
-  final String imageUrl;
-
-  SuggestedBook(this.title, this.author, this.imageUrl);
-}
 
 const Color primaryAppColor = Color(0xFF3BA66B);
 const Color accentGreenColor = Color(0xFF5CB85C);
 const Color descriptionBlueColor = Color(0xFF336699);
 
-final List<String> placeholderBookCovers = [
-  'https://upload.wikimedia.org/wikipedia/vi/9/9c/Nh%C3%A0_gi%E1%BA%A3_kim_%28s%C3%A1ch%29.jpg',
-  'https://bizweb.dktcdn.net/100/418/570/products/1-0a8266fb-fa59-4322-82fc-3053ba5c25b4.jpg',
-];
-
-final List<UpdateItem> circleUpdates = [
-  UpdateItem(
-    user: 'Ngọc Anh',
-    action: 'vừa đọc xong',
-    bookName: 'Đắc Nhân Tâm',
-    time: '2 giờ trước',
-  ),
-  UpdateItem(
-    user: 'Minh Tuấn',
-    action: 'đã thêm',
-    bookName: 'Muôn Kiếp Nhân Sinh',
-    time: 'Muốn đọc',
-  ),
-];
-
-final List<SuggestedBook> suggestedBooks = [
-  SuggestedBook(
-    'The Power of Habit',
-    'Charles Duhigg',
-    'https://bizweb.dktcdn.net/100/370/339/products/khong-gia-dinh.jpg',
-  ),
-  SuggestedBook(
-    'Deep Work',
-    'Cal Newport',
-    'https://images-na.ssl-images-amazon.com/images/I/71sBtM3Yi5L.jpg',
-  ),
-];
-
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  HomeScreen({super.key});
+
+  final HomeViewModel vm = HomeViewModel();
 
   void _openAddBook(BuildContext context) {
     Navigator.push(
@@ -91,9 +41,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 24),
           child: Column(
@@ -112,13 +62,16 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// ================= HEADER =================
+  // ================= HEADER =================
   Widget _header(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          const CircleAvatar(radius: 18, child: Icon(Icons.person, size: 20)),
+          const CircleAvatar(
+            radius: 18,
+            child: Icon(Icons.person, size: 20),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -126,6 +79,7 @@ class HomeScreen extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
+                color: Colors.black,
               ),
             ),
           ),
@@ -134,7 +88,8 @@ class HomeScreen extends StatelessWidget {
             onPressed: () => _openAddBook(context),
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: primaryAppColor),
+            icon: const Icon(Icons.notifications_none,
+                color: primaryAppColor),
             onPressed: () => _openNotifications(context),
           ),
         ],
@@ -142,7 +97,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// ================= SECTION TITLE =================
+  // ================= SECTION TITLE =================
   Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -151,24 +106,25 @@ class HomeScreen extends StatelessWidget {
         style: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w700,
+          color: Colors.black,
         ),
       ),
     );
   }
 
-  /// ================= CURRENTLY READING =================
+  // ================= CURRENTLY READING =================
   Widget _currentlyReading() {
     return SizedBox(
       height: 190,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: placeholderBookCovers.length,
+        itemCount: vm.currentlyReadingCovers.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (_, index) => ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.network(
-            placeholderBookCovers[index],
+            vm.currentlyReadingCovers[index],
             width: 130,
             fit: BoxFit.cover,
           ),
@@ -177,7 +133,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// ================= REVIEW =================
+  // ================= REVIEW =================
   Widget _reviewSection() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -204,6 +160,7 @@ class HomeScreen extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
+                      color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -238,50 +195,87 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// ================= CIRCLE UPDATES =================
+  // ================= CIRCLE UPDATES =================
   Widget _circleUpdates() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Tin mới từ vòng tròn',
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...circleUpdates.map(
-            (u) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(radius: 16),
-              title: RichText(
-                text: TextSpan(
-                  style: GoogleFonts.inter(color: Colors.black, fontSize: 13),
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: vm.circleUpdates.map((u) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 👤 AVATAR (BÊN TRÁI)
+              CircleAvatar(
+                radius: 18,
+                backgroundImage: NetworkImage(u.avatarUrl),
+              ),
+
+              const SizedBox(width: 12),
+
+              // 📝 TEXT
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextSpan(
-                      text: u.user,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: u.user,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextSpan(text: ' ${u.action} '),
+                          TextSpan(
+                            text: u.bookName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    TextSpan(text: ' ${u.action} '),
-                    TextSpan(
-                      text: u.bookName,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    const SizedBox(height: 4),
+                    Text(
+                      u.time,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
               ),
-              subtitle: Text(u.time, style: const TextStyle(fontSize: 12)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// ================= SUGGESTED BOOKS =================
+              // 📕 ẢNH SÁCH (BÊN PHẢI)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.network(
+                  u.bookCoverUrl,
+                  width: 40,
+                  height: 56,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ),
+  );
+}
+
+
+
+  // ================= SUGGESTED BOOKS =================
   Widget _suggestedBooks(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -293,11 +287,12 @@ class HomeScreen extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w700,
+              color: Colors.black,
             ),
           ),
           const SizedBox(height: 12),
-          ...suggestedBooks.map(
-            (b) => Container(
+          ...vm.suggestedBooks.map<Widget>((BookModel b) {
+            return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -330,6 +325,7 @@ class HomeScreen extends StatelessWidget {
                           b.title,
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w600,
+                            color: Colors.black,
                           ),
                         ),
                         Text(
@@ -352,12 +348,12 @@ class HomeScreen extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text('Thêm vào kệ'),
+                    child: const Text('Thêm'),
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          }).toList(),
         ],
       ),
     );
