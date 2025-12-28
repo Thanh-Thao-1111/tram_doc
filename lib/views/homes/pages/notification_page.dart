@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 const Color notificationBgColor = Color(0xFFF7F7F7);
 
 class NotificationPage extends StatelessWidget {
-   NotificationPage({super.key});
+   const NotificationPage({super.key});
 
   @override
   Widget build(BuildContext context) {

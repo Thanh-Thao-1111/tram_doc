@@ -3,7 +3,7 @@ import 'pages/add_book_search_page.dart';
 import 'pages/scan_pr_page.dart';
 
 class AddBookPage extends StatelessWidget {
-   AddBookPage({super.key});
+  const AddBookPage({super.key});
 
   @override
   Widget build(BuildContext context) {
