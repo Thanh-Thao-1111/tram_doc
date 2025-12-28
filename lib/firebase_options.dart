@@ -50,20 +50,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBM6x2yhuDIoAKnailC_CsgObL_Yzpp79s',
-    appId: '1:567602305206:web:062e41593d89a3f8b9ee17',
-    messagingSenderId: '567602305206',
-    projectId: 'tram-doc-48ba3',
-    authDomain: 'tram-doc-48ba3.firebaseapp.com',
-    storageBucket: 'tram-doc-48ba3.firebasestorage.app',
-    measurementId: 'G-GP3H4YPNDF',
+    apiKey: 'AIzaSyCPwROPbvD3ZwujxyVu2RvLlKR367VZKRs',
+    appId: '1:776723961540:web:1ad46f2dca3f11ff889b91',
+    messagingSenderId: '776723961540',
+    projectId: 'reading-885c2',
+    authDomain: 'reading-885c2.firebaseapp.com',
+    storageBucket: 'reading-885c2.firebasestorage.app',
+    measurementId: 'G-VYNDKMSJBH',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAcuXdAuWfLvryxj4K6EcoAFtbsj4Gusq4',
-    appId: '1:567602305206:android:92e0fddd316a1c72b9ee17',
-    messagingSenderId: '567602305206',
-    projectId: 'tram-doc-48ba3',
-    storageBucket: 'tram-doc-48ba3.firebasestorage.app',
+    apiKey: 'AIzaSyDpZbsX6TrFox6Ft5uDERwMS5Nl7n_XVag',
+    appId: '1:776723961540:android:ecd363756b2106c3889b91',
+    messagingSenderId: '776723961540',
+    projectId: 'reading-885c2',
+    storageBucket: 'reading-885c2.firebasestorage.app',
   );
+
 }

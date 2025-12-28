@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "567602305206",
-    "project_id": "tram-doc-48ba3",
-    "storage_bucket": "tram-doc-48ba3.firebasestorage.app"
+    "project_number": "776723961540",
+    "project_id": "reading-885c2",
+    "storage_bucket": "reading-885c2.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:567602305206:android:92e0fddd316a1c72b9ee17",
+        "mobilesdk_app_id": "1:776723961540:android:ecd363756b2106c3889b91",
         "android_client_info": {
           "package_name": "com.example.tram_doc"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAcuXdAuWfLvryxj4K6EcoAFtbsj4Gusq4"
+          "current_key": "AIzaSyDpZbsX6TrFox6Ft5uDERwMS5Nl7n_XVag"
         }
       ],
       "services": {
