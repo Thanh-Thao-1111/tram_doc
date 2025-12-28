@@ -44,19 +44,28 @@ class HomeScreen extends StatelessWidget {
     return Material(
       color: Colors.white,
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context),
-              _sectionTitle('Đang đọc'),
-              _currentlyReading(),
-              _reviewSection(),
-              _circleUpdates(),
-              _suggestedBooks(context),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header cố định không scroll
+            _header(context),
+            // Phần nội dung có thể scroll
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionTitle('Đang đọc'),
+                    _currentlyReading(),
+                    _reviewSection(),
+                    _circleUpdates(),
+                    _suggestedBooks(context),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

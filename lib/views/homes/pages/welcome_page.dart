@@ -54,24 +54,28 @@ class WelcomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 40),
+              // Spacer phía trên để đẩy ảnh xuống giữa
+              const Spacer(),
 
+              // Ảnh và text ở giữa màn hình
               Image.asset(
                 AppImages.welcome,
-                height: 220,
+                height: 240,
                 fit: BoxFit.contain,
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               Text(
                 'Chào mừng bạn đọc!',
                 style: GoogleFonts.inter(
-                  fontSize: 24,
+                  fontSize: 26,
                   fontWeight: FontWeight.w700,
                 ),
+                textAlign: TextAlign.center,
               ),
 
+              // Spacer phía dưới để cân bằng với spacer phía trên
               const Spacer(),
 
               // BUTTON: ĐĂNG NHẬP
