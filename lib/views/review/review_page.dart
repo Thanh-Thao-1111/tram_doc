@@ -94,14 +94,12 @@ class _ReviewPageState extends State<ReviewPage> {
         elevation: 0,
         backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
-        title: const Text(
-          "Ôn tập ghi nhớ",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
+        centerTitle: true,
+        title: const Text("Ôn tập ghi nhớ",
+            style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 22)),
       ),
       body: ListenableBuilder(
         listenable: _viewModel,

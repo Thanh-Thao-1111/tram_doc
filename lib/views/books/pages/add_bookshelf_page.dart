@@ -48,7 +48,17 @@ class _AddBookPreviewPageState extends State<AddBookPreviewPage> {
         }
       }
 
-      final bookWithStatus = widget.book.copyWith(readingStatus: status);
+      // Set currentPage based on status
+      int currentPage = 0;
+      if (status == ReadingStatus.completed) {
+        // Đã đọc → tiến độ 100%
+        currentPage = widget.book.pageCount ?? 0;
+      }
+      
+      final bookWithStatus = widget.book.copyWith(
+        readingStatus: status,
+        currentPage: currentPage,
+      );
       await _bookRepository.addBook(bookWithStatus);
 
       if (!mounted) return;

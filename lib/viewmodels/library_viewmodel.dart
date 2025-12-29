@@ -34,8 +34,10 @@ class LibraryViewModel extends ChangeNotifier {
   int get totalPages => _currentBook?.pageCount ?? 0;
 
   List<BookModel> get libraryBooks {
-    if (_localSearchQuery.isEmpty) return _libraryBooks;
-    return _libraryBooks.where((b) => _matchesQuery(b)).toList();
+    // Kệ "Muốn đọc" - filter by readingStatus = wantToRead
+    final list = _libraryBooks.where((b) => b.readingStatus == ReadingStatus.wantToRead).toList();
+    if (_localSearchQuery.isEmpty) return list;
+    return list.where((b) => _matchesQuery(b)).toList();
   }
 
   List<BookModel> get searchedBooks => _searchedBooks;
@@ -43,13 +45,15 @@ class LibraryViewModel extends ChangeNotifier {
   List<ReviewModel> get reviews => _reviews;
 
   List<BookModel> get readingBooks {
-    final list = _libraryBooks.where((b) => b.currentPage > 0 && b.currentPage < (b.pageCount ?? 0)).toList();
+    // Kệ "Đang đọc" - filter by readingStatus = reading
+    final list = _libraryBooks.where((b) => b.readingStatus == ReadingStatus.reading).toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
 
   List<BookModel> get finishedBooks {
-    final list = _libraryBooks.where((b) => (b.pageCount ?? 0) > 0 && b.currentPage >= (b.pageCount ?? 0)).toList();
+    // Kệ "Đã đọc" - filter by readingStatus = completed
+    final list = _libraryBooks.where((b) => b.readingStatus == ReadingStatus.completed).toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
@@ -211,18 +215,29 @@ class LibraryViewModel extends ChangeNotifier {
   }
 
   // ====================== NOTES & REVIEWS ======================
-  // Note: Notes and Reviews are stored locally for now (stub implementation)
   Future<void> fetchNotes() async {
-    if (_currentBook == null) return;
-    // TODO: Implement notes storage in Firestore
-    _notes = [];
+    if (_currentBook == null || _currentBook!.id == null) return;
+    
+    try {
+      final notesData = await _bookRepo.getNotes(_currentBook!.id!);
+      _notes = notesData.map((data) => NoteModel.fromFirestore(data, data['id'] ?? '')).toList();
+    } catch (e) {
+      print('Error fetching notes: $e');
+      _notes = [];
+    }
     notifyListeners();
   }
 
   Future<void> addUserNote(String content, int page) async {
-    if (_currentBook == null) return;
-    // TODO: Implement notes storage in Firestore
-    notifyListeners();
+    if (_currentBook == null || _currentBook!.id == null) return;
+    
+    try {
+      await _bookRepo.addNote(_currentBook!.id!, content, page);
+      // Refresh notes list after adding
+      await fetchNotes();
+    } catch (e) {
+      print('Error adding note: $e');
+    }
   }
 
   Future<void> fetchReviews() async {

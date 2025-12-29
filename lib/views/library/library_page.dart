@@ -63,16 +63,12 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            if (_showSearchBar) {
-              _closeSearch(viewModel);
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
+        leading: _showSearchBar
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => _closeSearch(viewModel),
+              )
+            : null,
         title: _showSearchBar
             ? TextField(
                 controller: _searchController,

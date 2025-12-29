@@ -231,7 +231,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
               labelColor: primaryColor,
               unselectedLabelColor: Colors.grey,
               indicatorColor: primaryColor,
-              tabs: [Tab(text: 'Muốn đọc'), Tab(text: 'Ghi chú'), Tab(text: 'Cộng đồng')],
+              tabs: [Tab(text: 'Thông tin'), Tab(text: 'Ghi chú'), Tab(text: 'Cộng đồng')],
             ),
 
             Expanded(

@@ -15,11 +15,16 @@ class NoteModel {
 
   // Từ Firebase về App
   factory NoteModel.fromFirestore(Map<String, dynamic> data, String id) {
+    DateTime noteDate = DateTime.now();
+    if (data['date'] != null && data['date'] is Timestamp) {
+      noteDate = (data['date'] as Timestamp).toDate();
+    }
+    
     return NoteModel(
       id: id,
       content: data['content'] ?? '',
       pageNumber: data['page'] ?? 0,
-      date: (data['date'] as Timestamp).toDate(),
+      date: noteDate,
     );
   }
 }
