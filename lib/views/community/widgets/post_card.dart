@@ -1,32 +1,49 @@
 import 'package:flutter/material.dart';
 import 'community_tokens.dart';
+import '../../../models/community_post_model.dart';
+import '../pages/comments_page.dart';
 
 class PostCard extends StatelessWidget {
-  final String name;
-  final String time;
-  final String actionText; // "đã ghi chú..." / "vừa hoàn thành..."
+  // For static data (backwards compatibility)
+  final String? name;
+  final String? time;
+  final String? actionText;
   final String? avatarAsset;
-
   final String? bookTitle;
   final String? bookAuthor;
   final String? bookCoverAsset;
-
-  final String? note; // đoạn quote (post 1)
+  final String? note;
+  
+  // For dynamic data from Firestore
+  final CommunityPost? post;
+  final int? commentCount;
 
   const PostCard({
     super.key,
-    required this.name,
-    required this.time,
-    required this.actionText,
+    this.name,
+    this.time,
+    this.actionText,
     this.avatarAsset,
     this.bookTitle,
     this.bookAuthor,
     this.bookCoverAsset,
     this.note,
+    this.post,
+    this.commentCount,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Use post data if available, otherwise use static props
+    final displayName = post?.userName ?? name ?? 'Người dùng';
+    final displayTime = post?.timeAgo ?? time ?? '';
+    final displayAction = post?.actionText ?? actionText ?? '';
+    final displayNote = post?.noteContent ?? note;
+    final displayBookTitle = post?.bookTitle ?? bookTitle;
+    final displayBookAuthor = post?.bookAuthor ?? bookAuthor;
+    final displayBookCover = post?.bookCoverUrl ?? bookCoverAsset;
+    final displayCommentCount = commentCount ?? post?.commentCount ?? 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -42,8 +59,10 @@ class PostCard extends StatelessWidget {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: avatarAsset == null ? null : AssetImage(avatarAsset!),
-                child: avatarAsset == null ? const Icon(Icons.person, color: Colors.white) : null,
+                backgroundImage: _getAvatarImage(),
+                child: _shouldShowDefaultAvatar() 
+                    ? const Icon(Icons.person, color: Colors.white) 
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -51,25 +70,25 @@ class PostCard extends StatelessWidget {
                   text: TextSpan(
                     style: const TextStyle(color: CommunityTokens.text, fontSize: 12),
                     children: [
-                      TextSpan(text: name, style: const TextStyle(fontWeight: FontWeight.w900)),
-                      TextSpan(text: ' $actionText'),
+                      TextSpan(text: displayName, style: const TextStyle(fontWeight: FontWeight.w900)),
+                      TextSpan(text: ' $displayAction'),
                     ],
                   ),
                 ),
               ),
-              Text(time, style: const TextStyle(fontSize: 11, color: CommunityTokens.subText)),
+              Text(displayTime, style: const TextStyle(fontSize: 11, color: CommunityTokens.subText)),
             ],
           ),
 
-          if (note != null) ...[
+          if (displayNote != null && displayNote.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              '“$note”',
+              '"$displayNote"',
               style: const TextStyle(color: CommunityTokens.subText, height: 1.4),
             ),
           ],
 
-          if (bookTitle != null) ...[
+          if (displayBookTitle != null) ...[
             const SizedBox(height: 10),
             Row(
               children: [
@@ -78,12 +97,7 @@ class PostCard extends StatelessWidget {
                   child: SizedBox(
                     width: 60,
                     height: 80,
-                    child: bookCoverAsset == null
-                        ? Container(
-                            color: const Color(0xFFE5E7EB),
-                            child: const Icon(Icons.menu_book, color: Colors.white),
-                          )
-                        : Image.asset(bookCoverAsset!, fit: BoxFit.cover),
+                    child: _buildBookCover(displayBookCover),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -91,9 +105,9 @@ class PostCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(bookTitle!, style: const TextStyle(fontWeight: FontWeight.w900)),
+                      Text(displayBookTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
                       const SizedBox(height: 4),
-                      Text(bookAuthor ?? '', style: const TextStyle(color: CommunityTokens.subText, fontSize: 12)),
+                      Text(displayBookAuthor ?? '', style: const TextStyle(color: CommunityTokens.subText, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -114,14 +128,62 @@ class PostCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                onPressed: () {},
+                onPressed: post != null 
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CommentsPage(post: post!),
+                          ),
+                        );
+                      }
+                    : null,
                 icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                label: const Text('Bình luận', style: TextStyle(fontWeight: FontWeight.w900)),
+                label: Text(
+                  displayCommentCount > 0 ? 'Bình luận ($displayCommentCount)' : 'Bình luận',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  ImageProvider? _getAvatarImage() {
+    if (post?.userAvatar != null) {
+      return NetworkImage(post!.userAvatar!);
+    } else if (avatarAsset != null) {
+      return AssetImage(avatarAsset!);
+    }
+    return null;
+  }
+
+  bool _shouldShowDefaultAvatar() {
+    return post?.userAvatar == null && avatarAsset == null;
+  }
+
+  Widget _buildBookCover(String? coverUrl) {
+    if (coverUrl == null) {
+      return Container(
+        color: const Color(0xFFE5E7EB),
+        child: const Icon(Icons.menu_book, color: Colors.white),
+      );
+    }
+    
+    // Check if it's a network URL or asset
+    if (coverUrl.startsWith('http')) {
+      return Image.network(
+        coverUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFE5E7EB),
+          child: const Icon(Icons.menu_book, color: Colors.white),
+        ),
+      );
+    } else {
+      return Image.asset(coverUrl, fit: BoxFit.cover);
+    }
   }
 }
