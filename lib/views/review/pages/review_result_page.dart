@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 
 class ReviewResultPage extends StatelessWidget {
-  const ReviewResultPage({super.key});
+  // 1. Thêm các biến để nhận kết quả (đặt giá trị mặc định để test UI)
+  final int easyCount;
+  final int goodCount;
+  final int hardCount;
+
+  const ReviewResultPage({
+    super.key,
+    this.easyCount = 5,   // Mặc định giả lập = 5
+    this.goodCount = 12,  // Mặc định giả lập = 12
+    this.hardCount = 3,   // Mặc định giả lập = 3
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +25,7 @@ class ReviewResultPage extends StatelessWidget {
             children: [
               const Spacer(),
               
-              // 1. Icon / Hình ảnh chúc mừng
+              // 2. Icon Chúc mừng
               Container(
                 width: 120,
                 height: 120,
@@ -31,7 +41,7 @@ class ReviewResultPage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 2. Lời chúc
+              // 3. Lời chúc
               const Text(
                 "Tuyệt vời!",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -45,33 +55,37 @@ class ReviewResultPage extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // 3. Thống kê kết quả (UI Tĩnh giả lập)
+              // 4. Thống kê kết quả (Dùng dữ liệu từ biến class)
               Row(
                 children: [
-                  _buildStatCard("Dễ", "12", Colors.green),
+                  _buildStatCard("Quên", hardCount.toString(), Colors.red),
                   const SizedBox(width: 16),
-                  _buildStatCard("Tốt", "30", Colors.blue),
+                  _buildStatCard("Nhớ", goodCount.toString(), Colors.blue),
                   const SizedBox(width: 16),
-                  _buildStatCard("Khó", "8", Colors.orange),
+                  _buildStatCard("Dễ", easyCount.toString(), Colors.green),
                 ],
               ),
 
               const Spacer(),
 
-              // 4. Các nút điều hướng
+              // 5. Nút điều hướng
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Quay về trang chủ ôn tập (ReviewPage)
+                    // Pop về màn hình Menu (ReviewPage)
                     Navigator.pop(context); 
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
                   ),
-                  child: const Text("Tiếp tục học", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    "Tiếp tục học", 
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -80,6 +94,8 @@ class ReviewResultPage extends StatelessWidget {
                 height: 50,
                 child: TextButton(
                   onPressed: () {
+                    // Quay về tận trang chủ (Home/MainPage) nếu cần
+                    // Navigator.of(context).popUntil((route) => route.isFirst);
                     Navigator.pop(context);
                   },
                   child: const Text("Về trang chủ", style: TextStyle(color: Colors.grey, fontSize: 16)),
@@ -104,9 +120,15 @@ class ReviewResultPage extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              count, 
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)
+            ),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 14, color: color)),
+            Text(
+              label, 
+              style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.w500)
+            ),
           ],
         ),
       ),
