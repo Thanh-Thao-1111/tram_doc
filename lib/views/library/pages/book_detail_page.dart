@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'add_note_page.dart';
-import 'review_book_page.dart';
+import 'package:intl/intl.dart'; 
 import '../../../viewmodels/library_viewmodel.dart';
 import '../../../models/book_model.dart';
 import '../widgets/note_item.dart';
@@ -67,23 +66,18 @@ class _BookDetailPageState extends State<BookDetailPage> {
               suffixText: "trang",
             ),
             validator: (value) => viewModel.validatePageNumber(value, maxPage: total),
-            onSaved: (value) => newPage = int.parse(value!),
+            onSaved: (value) => newPage = int.tryParse(value ?? '0') ?? 0,
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy", style: TextStyle(color: Colors.grey))),
           TextButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
                 formKey.currentState!.save();
                 viewModel.updateReadingProgress(newPage);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Đã cập nhật tiến độ đọc!")),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã cập nhật tiến độ đọc!")));
               }
             },
             child: const Text("Lưu", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
@@ -145,6 +139,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<LibraryViewModel>();
+    final book = viewModel.currentBook;
     const Color primaryColor = Color(0xFF4CAF50);
 
     final viewModel = context.watch<LibraryViewModel>();
@@ -175,10 +171,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
             icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
             onPressed: () => Navigator.pop(context),
           ),
-          title: const Text(
-            'Chi tiết Sách',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
+          title: const Text('Chi tiết Sách', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           centerTitle: true,
           actions: [
             // Delete button
@@ -196,15 +189,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
         ),
         body: Column(
           children: [
-            // --- HEADER SÁCH ---
+            // HEADER SÁCH
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 100,
-                    height: 150,
+                    width: 80, height: 120,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
@@ -287,20 +278,18 @@ class _BookDetailPageState extends State<BookDetailPage> {
               ),
             ),
 
-            // --- TAB BAR ---
             const TabBar(
               labelColor: primaryColor,
               unselectedLabelColor: Colors.grey,
               indicatorColor: primaryColor,
-              labelStyle: TextStyle(fontWeight: FontWeight.bold),
               tabs: [
-                Tab(text: 'Thông tin'),
+                // 🔥 SỬA: Đổi tên Tab 1 thành "Muốn đọc" theo yêu cầu
+                Tab(text: 'Muốn đọc'), 
                 Tab(text: 'Ghi chú'),
-                Tab(text: 'Cộng đồng'),
+                Tab(text: 'Cộng đồng')
               ],
             ),
 
-            // --- TAB CONTENT ---
             Expanded(
               child: TabBarView(
                 children: [
@@ -322,6 +311,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     int current = viewModel.currentPage;
     int total = viewModel.totalPages;
     double progress = (total == 0) ? 0 : (current / total);
+    if (progress > 1) progress = 1;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -352,57 +342,77 @@ class _BookDetailPageState extends State<BookDetailPage> {
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
           ),
-
+          
+          const SizedBox(height: 24),
+          const Divider(),
           const SizedBox(height: 24),
 
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                _showUpdateProgressDialog(context);
-              },
-              icon: const Icon(Icons.edit, color: Colors.green),
-              label: const Text("Cập nhật tiến độ", style: TextStyle(color: Colors.green, fontSize: 16, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE8F5E9),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          // 2. Nút Bấm
+          if (viewModel.isSearching) ...[
+            // Đang tìm kiếm -> Nút "Muốn đọc" (để thêm vào tủ)
+            Center(
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: viewModel.isLoading 
+                    ? null 
+                    : () async {
+                        await viewModel.addToLibrary(book);
+                        if (mounted) Navigator.pop(context);
+                      },
+                  icon: const Icon(Icons.bookmark_add, color: Colors.white),
+                  // 🔥 SỬA: Tên nút thành "Muốn đọc"
+                  label: const Text("Muốn đọc", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                ),
               ),
             ),
-          ),
+          ] else ...[
+            // Đã có trong tủ -> Hiện tiến độ
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Đã đọc ${(progress * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                Text("$current / $total trang", style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(value: progress, backgroundColor: Colors.grey[200], color: primaryColor, minHeight: 10),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () => _showUpdateProgressDialog(context),
+                icon: const Icon(Icons.edit, color: Colors.green),
+                label: const Text("Cập nhật tiến độ", style: TextStyle(color: Colors.green, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE8F5E9), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              ),
+            ),
+          ]
         ],
       ),
     );
   }
 
-  // --- TAB 2: GHI CHÚ ---
-  Widget _buildNotesTab(BuildContext context) {
+  // Tab 2 & 3 giữ nguyên
+  Widget _buildNotesTab(BuildContext context, LibraryViewModel viewModel) {
+    final notes = viewModel.notes;
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: SizedBox(
             width: double.infinity,
-            height: 50,
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AddNotePage()),
-                );
-              },
-              icon: const Icon(Icons.edit_note, color: Colors.white),
-              label: const Text(
-                "Viết ghi chú mới",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddNotePage())),
+              icon: const Icon(Icons.edit_note),
+              label: const Text("Viết ghi chú mới"),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
             ),
           ),
         ),

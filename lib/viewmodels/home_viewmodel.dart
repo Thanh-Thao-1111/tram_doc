@@ -34,6 +34,7 @@ class HomeViewModel {
   /// Gợi ý sách
   final List<BookModel> suggestedBooks = [
     BookModel(
+      id: 'suggest_2',
       title: 'The Power of Habit',
       author: 'Charles Duhigg',
       imageUrl:
@@ -44,6 +45,7 @@ class HomeViewModel {
       description: 'In The Power of Habit, award-winning business reporter Charles Duhigg takes us to the thrilling edge of scientific discoveries that explain why habits exist and how they can be changed. With penetrating intelligence and an ability to distill vast amounts of information into engrossing narratives, Duhigg brings to life a whole new understanding of human nature and its potential for transformation.',
     ),
     BookModel(
+      id: 'suggest_1',
       title: 'Deep Work',
       author: 'Cal Newport',
       imageUrl:
@@ -54,4 +56,22 @@ class HomeViewModel {
       description: 'One of the most valuable skills in our economy is becoming increasingly rare. If you master this skill, you\'ll achieve extraordinary results. Deep Work is an indispensable guide to anyone seeking focused success in a distracted world.',
     ),
   ];
+}
+
+class UpdateItem {
+  final String user;
+  final String action;
+  final String bookName;
+  final String time;
+  final String avatarUrl;
+  final String bookCoverUrl;
+
+  UpdateItem({
+    required this.user,
+    required this.action,
+    required this.bookName,
+    required this.time,
+    required this.avatarUrl,
+    required this.bookCoverUrl,
+  });
 }

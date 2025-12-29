@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'ocr_capture_page.dart';
-import 'create_flashcard_page.dart';
 import 'package:provider/provider.dart';
 import '../../../viewmodels/library_viewmodel.dart';
+import 'ocr_capture_page.dart'; 
+import 'create_flashcard_page.dart'; 
 
 class AddNotePage extends StatefulWidget {
   const AddNotePage({super.key});
@@ -13,7 +13,6 @@ class AddNotePage extends StatefulWidget {
 
 class _AddNotePageState extends State<AddNotePage> {
   final _formKey = GlobalKey<FormState>();
-
   final _contentController = TextEditingController();
 
   String _content = '';
@@ -21,13 +20,18 @@ class _AddNotePageState extends State<AddNotePage> {
 
   @override
   void dispose() {
-    _contentController.dispose(); // Nhớ dispose
+    _contentController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.read<LibraryViewModel>();
+    // 1. Lấy dữ liệu sách đang chọn từ ViewModel
+    final viewModel = context.watch<LibraryViewModel>();
+    final book = viewModel.currentBook;
+
+    // Check an toàn
+    if (book == null) return const Scaffold(body: Center(child: Text("Lỗi: Không tìm thấy sách")));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -37,10 +41,7 @@ class _AddNotePageState extends State<AddNotePage> {
         leadingWidth: 80,
         leading: TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(
-            "Huỷ",
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
+          child: const Text("Huỷ", style: TextStyle(color: Colors.grey, fontSize: 16)),
         ),
         centerTitle: true,
         title: const Text(
@@ -52,62 +53,47 @@ class _AddNotePageState extends State<AddNotePage> {
             onPressed: () {
               if (_formKey.currentState!.validate()) {
                 _formKey.currentState!.save();
-
-                viewModel.addNote(_content, _pageNumber);
-
+                // Gọi ViewModel lưu note
+                viewModel.addUserNote(_content, _pageNumber ?? 0);
+                
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Đã lưu ghi chú!')),
                 );
               }
             },
-            child: const Text(
-              "Lưu",
-              style: TextStyle(
-                color: Color(0xFF4CAF50),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: const Text("Lưu", style: TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Phần hiển thị sách đang chọn (Read-only)
+          // --- PHẦN HIỂN THỊ THÔNG TIN SÁCH (ĐÃ SỬA DYNAMIC) ---
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: Colors.grey[50],
             child: Row(
               children: [
                 Container(
-                  width: 30,
-                  height: 45,
+                  width: 30, height: 45,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4),
-                    image: const DecorationImage(
-                      image: NetworkImage(
-                        'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1635328224i/59495633.jpg',
-                      ),
+                    image: DecorationImage(
+                      // Lấy ảnh thật từ book model
+                      image: NetworkImage(book.imageUrl.isNotEmpty ? book.imageUrl : 'https://via.placeholder.com/150'),
                       fit: BoxFit.cover,
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Text("Ghi chú cho:", style: TextStyle(color: Colors.grey, fontSize: 12)),
                       Text(
-                        "Ghi chú cho:",
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                      Text(
-                        "Tâm lý học về tiền",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                        book.title, // Lấy tên thật từ book model
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -118,7 +104,7 @@ class _AddNotePageState extends State<AddNotePage> {
           ),
           const Divider(height: 1),
 
-          // Vùng nhập liệu nội dung
+          // --- FORM NHẬP LIỆU ---
           Expanded(
             child: Form(
               key: _formKey,
@@ -128,24 +114,19 @@ class _AddNotePageState extends State<AddNotePage> {
                   children: [
                     TextFormField(
                       controller: _contentController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: "Nhập ghi chú của bạn...",
                         border: InputBorder.none,
                         hintStyle: TextStyle(fontSize: 18, color: Colors.grey),
-                        errorStyle: TextStyle(color: Colors.redAccent),
                       ),
-                      style: TextStyle(fontSize: 18),
-                      maxLines: null, // Cho phép xuống dòng thoải mái
+                      style: const TextStyle(fontSize: 18),
+                      maxLines: null,
                       keyboardType: TextInputType.multiline,
-
-                      validator: (value) => viewModel.validateContent(
-                        value,
-                        fieldName: "Ghi chú",
-                      ),
+                      validator: (value) => value!.isEmpty ? "Nội dung không được trống" : null,
                       onSaved: (value) => _content = value!.trim(),
-                      onChanged: (value) => _content = value,
                     ),
                     const Spacer(),
+                    
                     // Input số trang
                     Container(
                       alignment: Alignment.centerLeft,
@@ -155,21 +136,12 @@ class _AddNotePageState extends State<AddNotePage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: TextFormField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: "Nhập số trang",
                           border: InputBorder.none,
-                          icon: Icon(
-                            Icons.bookmarks_outlined,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
+                          icon: Icon(Icons.bookmarks_outlined, color: Colors.grey, size: 20),
                         ),
                         keyboardType: TextInputType.number,
-
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return null;
-                          return viewModel.validatePageNumber(value);
-                        },
                         onSaved: (value) {
                           if (value != null && value.isNotEmpty) {
                             _pageNumber = int.parse(value);
@@ -183,119 +155,69 @@ class _AddNotePageState extends State<AddNotePage> {
             ),
           ),
 
-          // Toolbar các nút chức năng bên dưới
+          // --- TOOLBAR CHỨC NĂNG (OCR, FLASHCARD) ---
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  offset: const Offset(0, -2),
-                  blurRadius: 10,
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), offset: const Offset(0, -2), blurRadius: 10)],
             ),
             child: Column(
               children: [
-                // Nút OCR lớn màu xanh
+                // NÚT OCR
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
                     onPressed: () async {
+                      // Chuyển sang trang chụp ảnh OCR
                       final result = await Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const OcrCapturePage(),
-                        ),
+                        MaterialPageRoute(builder: (context) => const OcrCapturePage()),
                       );
                       if (result != null && result is String) {
                         setState(() {
-                          _contentController.text = result; // Điền vào ô nhập
-                          _content = result; // Cập nhật biến
+                          _contentController.text = result;
+                          _content = result;
                         });
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Đã trích xuất văn bản!"),
-                          ),
-                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    icon: const Icon(
-                      Icons.camera_alt_outlined,
-                      color: Colors.white,
-                    ),
-                    label: const Text(
-                      "Chụp & trích xuất chữ (OCR)",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+                    label: const Text("Chụp & trích xuất chữ (OCR)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Các nút phụ
+                
+                // CÁC NÚT PHỤ
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.format_size,
-                          size: 18,
-                          color: Colors.black87,
-                        ),
-                        label: const Text(
-                          "Ý chính",
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: BorderSide(color: Colors.grey.shade300),
-                        ),
-                      ),
-                    ),
+                    Expanded(child: _buildOutlineButton(Icons.format_size, "Ý chính", () {})),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const CreateFlashcardPage(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.style,
-                          size: 18,
-                          color: Colors.black87,
-                        ),
-                        label: const Text(
-                          "Tạo Flashcard",
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: BorderSide(color: Colors.grey.shade300),
-                        ),
-                      ),
-                    ),
+                    Expanded(child: _buildOutlineButton(Icons.style, "Tạo Flashcard", () {
+                       Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateFlashcardPage()));
+                    })),
                   ],
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOutlineButton(IconData icon, String label, VoidCallback onTap) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: Colors.black87),
+      label: Text(label, style: const TextStyle(color: Colors.black87)),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        side: BorderSide(color: Colors.grey.shade300),
       ),
     );
   }

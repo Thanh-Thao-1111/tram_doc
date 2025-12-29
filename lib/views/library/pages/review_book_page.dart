@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../widgets/rating_star.dart';
 import 'package:provider/provider.dart';
 import '../../../viewmodels/library_viewmodel.dart';
+import '../widgets/rating_star.dart'; // Đảm bảo widget này đã tồn tại
 
 class ReviewBookPage extends StatefulWidget {
   const ReviewBookPage({super.key});
@@ -18,7 +18,12 @@ class _ReviewBookPageState extends State<ReviewBookPage> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.read<LibraryViewModel>();
+    // 1. Lấy dữ liệu sách từ ViewModel
+    final viewModel = context.watch<LibraryViewModel>();
+    final book = viewModel.currentBook;
+
+    // Check an toàn
+    if (book == null) return const Scaffold(body: Center(child: Text("Lỗi: Không tìm thấy sách")));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -48,7 +53,7 @@ class _ReviewBookPageState extends State<ReviewBookPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 1. Thông tin sách
+            // 1. THÔNG TIN SÁCH (ĐÃ SỬA DYNAMIC)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -57,30 +62,32 @@ class _ReviewBookPageState extends State<ReviewBookPage> {
                   height: 90,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4),
-                    image: const DecorationImage(
+                    image: DecorationImage(
                       image: NetworkImage(
-                        'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1635328224i/59495633.jpg',
+                        book.imageUrl.isNotEmpty ? book.imageUrl : 'https://via.placeholder.com/150',
                       ),
                       fit: BoxFit.cover,
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Nhà Giả Kim", 
-                        style: TextStyle(
+                        book.title, // Tên sách thật
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        "Paulo Coelho",
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                        book.author, // Tên tác giả thật
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
                       ),
                     ],
                   ),
@@ -90,61 +97,60 @@ class _ReviewBookPageState extends State<ReviewBookPage> {
 
             const SizedBox(height: 32),
 
-            // 2. Chọn Sao (Rating Star)
+            // 2. CHỌN SAO (RATING)
             Center(
-                child: Column(
-                  children: [
-                    RatingStar(
-                      rating: _selectedRating,
-                      size: 40,
-                      activeColor: Colors.amber,
-                      onRatingChanged: (newRating) {
-                        setState(() {
-                          _selectedRating = newRating;
-                        });
-                      },
-                    ),
-                    // Hiển thị nhắc nhở nếu chưa chọn sao
-                    if (_selectedRating == 0)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          "Hãy chạm vào sao để chấm điểm",
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
+              child: Column(
+                children: [
+                  RatingStar(
+                    rating: _selectedRating,
+                    size: 40,
+                    activeColor: Colors.amber,
+                    onRatingChanged: (newRating) {
+                      setState(() {
+                        _selectedRating = newRating;
+                      });
+                    },
+                  ),
+                  if (_selectedRating == 0)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        "Hãy chạm vào sao để chấm điểm",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
+            ),
 
             const SizedBox(height: 32),
 
-            // 3. Ô nhập nội dung
-            
-            
+            // 3. Ô NHẬP NỘI DUNG
             Form(
               key: _formKey,
-              child:Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: TextFormField(
-                maxLines: 8, 
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                decoration: InputDecoration(
-                  hintText: "Chia sẻ cảm nghĩ của bạn về cuốn sách này...",
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.grey),
-                  errorStyle: TextStyle(color: Colors.redAccent),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-                  validator: (value) => viewModel.validateContent(
-                    value, 
-                    minLength: 10, 
-                    fieldName: "Nội dung đánh giá"
+                child: TextFormField(
+                  maxLines: 8,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  decoration: const InputDecoration(
+                    hintText: "Chia sẻ cảm nghĩ của bạn về cuốn sách này...",
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.grey),
+                    errorStyle: TextStyle(color: Colors.redAccent),
                   ),
+                  // Dùng hàm validate của ViewModel (nếu có) hoặc tự viết
+                  validator: (value) {
+                    if (value == null || value.trim().length < 5) {
+                      return "Nội dung đánh giá quá ngắn (tối thiểu 5 ký tự)";
+                    }
+                    return null;
+                  },
                   onSaved: (value) => _reviewContent = value!.trim(),
                 ),
               ),
@@ -152,35 +158,38 @@ class _ReviewBookPageState extends State<ReviewBookPage> {
 
             const SizedBox(height: 32),
 
-            // 4. Nút Gửi đánh giá
+            // 4. NÚT GỬI ĐÁNH GIÁ
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  // Validate Số sao
                   if (_selectedRating == 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Bạn quên chấm điểm sao rồi!"),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Bạn quên chấm điểm sao rồi!"),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
                   }
-                  if (_formKey.currentState!.validate()) {
-                      _formKey.currentState!.save();
 
-                      viewModel.submitReview(_selectedRating, _reviewContent);
-                      
-                      // context.read<ReviewViewModel>().submitReview(...)
-                  // Xử lý gửi review xong thì đóng màn hình
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  // Validate Nội dung
+                  if (_formKey.currentState!.validate()) {
+                    _formKey.currentState!.save();
+
+                    // 🔥 GỌI HÀM LƯU TỪ VIEWMODEL (Lưu lên Firebase)
+                    await viewModel.addUserReview(_reviewContent, _selectedRating);
+                    
+                    if (mounted) {
+                      Navigator.pop(context); // Đóng trang
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("Cảm ơn đánh giá của bạn!")),
                       );
+                    }
                   }
                 },
-              
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),
                   shape: RoundedRectangleBorder(

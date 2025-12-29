@@ -8,7 +8,7 @@ import '../books/add_book_page.dart';
 
 class LibraryPage extends StatefulWidget {
   final int initialTabIndex;
-  
+
   const LibraryPage({super.key, this.initialTabIndex = 0});
 
   @override
@@ -17,32 +17,45 @@ class LibraryPage extends StatefulWidget {
 
 class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+
+  // Biến trạng thái: true = đang mở ô tìm kiếm
+  bool _showSearchBar = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 3, 
+      length: 3,
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
-    
-    // Load books when page initializes
+
+    // Khi init, fetchBooks() từ repo cũ, nhưng có thể thay bằng loadBooks() nếu muốn Firestore
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LibraryViewModel>().loadBooks();
+      context.read<LibraryViewModel>().fetchBooks();
     });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  // Hàm xử lý tắt tìm kiếm
+  void _closeSearch(LibraryViewModel viewModel) {
+    setState(() {
+      _showSearchBar = false;
+      _searchController.clear();
+      viewModel.setLocalSearchQuery("");
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<LibraryViewModel>();
-    final books = viewModel.libraryBooks;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -50,21 +63,57 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Thư viện',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 24),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            if (_showSearchBar) {
+              _closeSearch(viewModel);
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
+        title: _showSearchBar
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Lọc tìm sách trong tủ...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.grey),
+                ),
+                style: const TextStyle(color: Colors.black),
+                onChanged: (value) {
+                  viewModel.setLocalSearchQuery(value);
+                },
+              )
+            : const Text(
+                'Thư viện',
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 24),
+              ),
         actions: [
-          IconButton(icon: const Icon(Icons.search, size: 28, color: Colors.grey), onPressed: () {}),
           IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF4CAF50), size: 28),
+            icon: Icon(_showSearchBar ? Icons.close : Icons.search, size: 28, color: Colors.grey),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddBookPage()),
-              );
+              if (_showSearchBar) {
+                _closeSearch(viewModel);
+              } else {
+                setState(() {
+                  _showSearchBar = true;
+                });
+              }
             },
           ),
+          if (!_showSearchBar)
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF4CAF50), size: 28),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddBookPage()),
+                );
+              },
+            ),
           const SizedBox(width: 8),
         ],
         bottom: TabBar(
@@ -83,39 +132,14 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
       ),
       body: viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : viewModel.errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(viewModel.errorMessage!, textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => viewModel.loadBooks(),
-                        child: const Text('Thử lại'),
-                      ),
-                    ],
-                  ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildBookGrid(
-                      books.where((b) => b.readingStatus == ReadingStatus.wantToRead).toList(),
-                      viewModel,
-                    ),
-                    _buildBookGrid(
-                      books.where((b) => b.readingStatus == ReadingStatus.reading).toList(),
-                      viewModel,
-                    ),
-                    _buildBookGrid(
-                      books.where((b) => b.readingStatus == ReadingStatus.completed).toList(),
-                      viewModel,
-                    ),
-                  ],
-                ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildBookGrid(viewModel.libraryBooks, viewModel),
+                _buildBookGrid(viewModel.readingBooks, viewModel),
+                _buildBookGrid(viewModel.finishedBooks, viewModel),
+              ],
+            ),
     );
   }
 
@@ -127,9 +151,9 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
           children: [
             Icon(Icons.library_books, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Chưa có sách nào',
-              style: TextStyle(color: Colors.grey[500], fontSize: 16),
+              style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -165,7 +189,6 @@ class _LibraryPageState extends State<LibraryPage> with SingleTickerProviderStat
           ),
           itemBuilder: (context, index) {
             final book = books[index];
-
             return LibraryBookItem(
               title: book.title,
               author: book.author,
