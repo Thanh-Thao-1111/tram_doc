@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-
+import 'library/library_page.dart';
+import 'homes/home_page.dart';
+import 'homes/pages/notification_page.dart';
+import 'books/add_book_page.dart';
+import 'books/pages/add_bookshelf_page.dart';
+import 'review/review_page.dart';
 import 'community/community_page.dart';
 import 'profile/profile_page.dart';
-import 'library/library_page.dart';
-import 'review/review_page.dart';
-import 'homes/home_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -14,10 +16,33 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
+  // Biến này để lưu tab hiện tại, nằm ngay trong UI
   int _currentIndex = 0;
 
+  // Màu sắc UI
   static const Color activeColor = Color(0xFF3BA66B);
   static const Color inactiveColor = Color(0xFF9CA3AF);
+
+  void _openAddBook() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddBookPage()),
+    );
+  }
+
+  void _openAddBookShelf() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddBookPreviewPage()),
+    );
+  }
+
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => NotificationPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

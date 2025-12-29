@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../../services/auth_service.dart';
 import '../../main_page.dart';
 import 'signup_page.dart';
 import 'forgot_password_page.dart';
-import '../home_page.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});
@@ -16,8 +17,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   static const Color primaryGreen = Color(0xFF3BA66B);
   static const Color inputBg = Color(0xFFF9FAFB);
@@ -43,14 +46,37 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _login() {
+  void _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) =>  MainPage()),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      await _authService.signIn(
+        emailOrUsername: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
