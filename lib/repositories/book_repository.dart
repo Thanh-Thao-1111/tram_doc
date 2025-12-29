@@ -97,11 +97,12 @@ class BookRepository {
     }
   }
 
-  /// Update reading progress
-  Future<void> updateReadingProgress(String id, int currentPage) async {
+  /// Update reading progress and status
+  Future<void> updateReadingProgress(String id, int currentPage, String readingStatus) async {
     try {
       await _booksCollection.doc(id).update({
         'currentPage': currentPage,
+        'readingStatus': readingStatus,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {

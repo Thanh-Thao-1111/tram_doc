@@ -75,7 +75,7 @@ class AuthRepository {
     String? username,
   }) async {
     try {
-      // Check if username already exists
+      // Check if username already exists (Firestore rules allow unauthenticated read)
       if (username != null && username.isNotEmpty) {
         final existingEmail = await getEmailByUsername(username);
         if (existingEmail != null) {
@@ -83,6 +83,7 @@ class AuthRepository {
         }
       }
 
+      // Create Firebase Auth user
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,

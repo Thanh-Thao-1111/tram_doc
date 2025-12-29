@@ -147,13 +147,37 @@ class LibraryViewModel extends ChangeNotifier {
   Future<void> updateReadingProgress(int newPage) async {
     if (_currentBook != null && _currentBook!.id != null) {
       _currentPage = newPage;
+      
+      // Tự động xác định trạng thái đọc dựa trên tiến độ
+      final totalPages = _currentBook!.pageCount ?? 0;
+      ReadingStatus newStatus;
+      
+      if (newPage <= 0) {
+        // Trang 0 = Muốn đọc
+        newStatus = ReadingStatus.wantToRead;
+      } else if (totalPages > 0 && newPage >= totalPages) {
+        // Đọc hết = Đã đọc
+        newStatus = ReadingStatus.completed;
+      } else {
+        // Đang đọc giữa chừng = Đang đọc
+        newStatus = ReadingStatus.reading;
+      }
+      
       notifyListeners();
 
-      await _bookRepo.updateReadingProgress(_currentBook!.id!, newPage);
+      // Cập nhật lên Firestore với cả currentPage và readingStatus
+      final statusString = newStatus == ReadingStatus.completed 
+          ? 'completed' 
+          : (newStatus == ReadingStatus.reading ? 'reading' : 'wantToRead');
+      
+      await _bookRepo.updateReadingProgress(_currentBook!.id!, newPage, statusString);
 
       final index = _libraryBooks.indexWhere((b) => b.id == _currentBook!.id);
       if (index != -1) {
-        final updatedBook = _currentBook!.copyWith(currentPage: newPage);
+        final updatedBook = _currentBook!.copyWith(
+          currentPage: newPage,
+          readingStatus: newStatus,
+        );
         _libraryBooks[index] = updatedBook;
         _currentBook = updatedBook;
       }

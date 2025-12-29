@@ -321,22 +321,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 // LOGIN LINK
                 Center(
-                  child: RichText(
-                    text: TextSpan(
-                      text: 'Đã có tài khoản? ',
-                      style: GoogleFonts.inter(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Đăng nhập ngay',
-                          style: GoogleFonts.inter(
-                            color: primaryGreen,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                      );
+                    },
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'Đã có tài khoản? ',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey,
+                          fontSize: 14,
                         ),
-                      ],
+                        children: [
+                          TextSpan(
+                            text: 'Đăng nhập ngay',
+                            style: GoogleFonts.inter(
+                              color: primaryGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

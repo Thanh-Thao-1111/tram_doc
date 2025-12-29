@@ -298,6 +298,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
               ),
             ),
           ] else ...[
+            // Đã có trong tủ -> Hiện tiến độ (1 dòng duy nhất)
             // 2. Đã có trong tủ -> Hiện Tiến độ + Nút Cập nhật
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -306,7 +307,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 Text("$current / $total trang", style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(value: progress, backgroundColor: Colors.grey[200], color: primaryColor, minHeight: 10),
