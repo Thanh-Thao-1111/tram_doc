@@ -12,39 +12,63 @@ class FlashcardPlayerPage extends StatefulWidget {
 }
 
 class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
-  // 1. Khởi tạo ViewModel
+  // Khởi tạo ViewModel
   final FlashcardPlayerViewModel _viewModel = FlashcardPlayerViewModel();
 
   @override
   void dispose() {
-    _viewModel.dispose(); // Hủy ViewModel khi thoát
+    _viewModel.dispose(); 
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 2. Dùng ListenableBuilder để UI tự vẽ lại khi ViewModel thay đổi
     return ListenableBuilder(
       listenable: _viewModel,
       builder: (context, child) {
         
-        // --- LOGIC ĐIỀU HƯỚNG: Khi học xong ---
+        // 1. XỬ LÝ TRẠNG THÁI LOADING (Khi đang lấy data từ Firebase)
+        if (_viewModel.isLoading) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text("Đang tải dữ liệu từ Firebase..."),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // 2. LOGIC ĐIỀU HƯỚNG: Khi học xong hoặc không có bài để học
         if (_viewModel.isFinished) {
           Future.microtask(() {
             if (context.mounted) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const ReviewResultPage()),
+                MaterialPageRoute(builder: (context) =>  ReviewResultPage(
+                  easyCount: _viewModel.easyCount,
+                  goodCount: _viewModel.goodCount,
+                  hardCount: _viewModel.hardCount,
+                )),
               );
             }
           });
-          // Trả về màn hình chờ tạm thời
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+
+        // 3. KIỂM TRA DANH SÁCH RỖNG (Trường hợp Repository trả về list rỗng)
+        if (_viewModel.cards.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(leading: const CloseButton()),
+            body: const Center(child: Text("Hôm nay bạn không có bài cần ôn tập!")),
           );
         }
 
-        // Lấy thẻ hiện tại từ ViewModel
+        // Lấy thẻ hiện tại an toàn
         final currentCard = _viewModel.currentCard;
 
         return Scaffold(
@@ -60,13 +84,12 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
             title: Column(
               children: [
                 Text(
-                  widget.mode == "DAILY_REVIEW" ? "Ôn tập hàng ngày" : "Ôn sai",
+                  widget.mode == "DAILY_REVIEW" ? "Ôn tập hàng ngày" : "Ôn tập",
                   style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: 200,
-                  // PROGRESS BAR: Lấy số liệu thực tế từ ViewModel
                   child: StudyProgressBar(
                     current: _viewModel.currentIndex + 1, 
                     total: _viewModel.totalCards,
@@ -81,7 +104,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
               Expanded(
                 child: Center(
                   child: GestureDetector(
-                    onTap: _viewModel.flipCard, // GỌI HÀM VM: Lật thẻ
+                    onTap: _viewModel.flipCard,
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.85,
                       height: MediaQuery.of(context).size.height * 0.55,
@@ -97,7 +120,6 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
                           ),
                         ],
                       ),
-                      // Logic hiển thị mặt trước/sau dựa trên biến isFlipped của VM
                       child: _viewModel.isFlipped 
                           ? _buildBackFace(currentCard) 
                           : _buildFrontFace(currentCard),
@@ -106,11 +128,10 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
                 ),
               ),
 
-              // --- KHU VỰC NÚT BẤM (BUTTONS) ---
+              // --- KHU VỰC NÚT BẤM (Chỉ hiện khi đã lật) ---
               Container(
                 padding: const EdgeInsets.all(24),
                 height: 120,
-                // Chỉ hiện nút khi thẻ đã lật (check isFlipped từ VM)
                 child: _viewModel.isFlipped 
                     ? _buildRatingButtons() 
                     : const SizedBox.shrink(),
@@ -122,9 +143,8 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
     );
   }
 
-  // --- CÁC WIDGET CON (UI) ---
-
-  Widget _buildFrontFace(FlashcardData card) {
+  // --- UI MẶT TRƯỚC ---
+  Widget _buildFrontFace(dynamic card) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -137,13 +157,20 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
           child: const Text("Câu hỏi", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 32),
-        Text(
-          card.question, 
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Text(
+                card.question, 
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
         ),
         const Spacer(),
-        Text("Nguồn: ${card.source}", style: const TextStyle(color: Colors.grey)),
+        // Chỉnh sửa hiển thị nguồn/note từ Firebase
+        Text("Ghi chú: ${card.noteId ?? 'Không có'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 32),
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
@@ -157,7 +184,8 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
     );
   }
 
-  Widget _buildBackFace(FlashcardData card) {
+  // --- UI MẶT SAU ---
+  Widget _buildBackFace(dynamic card) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -170,13 +198,19 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
           child: const Text("Đáp án", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 32),
-        Text(
-          card.answer,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Text(
+                card.answer,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+            ),
+          ),
         ),
         const Spacer(),
-        Text("Nguồn: ${card.source}", style: const TextStyle(color: Colors.grey)),
+        Text("Ease Factor: ${card.easeFactor}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }
@@ -184,7 +218,6 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
   Widget _buildRatingButtons() {
     return Row(
       children: [
-        // Các nút bấm gọi handleRating với text tương ứng
         Expanded(child: _ratingButton("Khó", Colors.grey.shade200, Colors.black)),
         const SizedBox(width: 12),
         Expanded(child: _ratingButton("Tốt", const Color(0xFF4CAF50), Colors.white)),
@@ -198,7 +231,6 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
     return SizedBox(
       height: 50,
       child: ElevatedButton(
-        // GỌI HÀM VM: Xử lý đánh giá -> Chuyển câu tiếp theo
         onPressed: () => _viewModel.handleRating(text), 
         style: ElevatedButton.styleFrom(
           backgroundColor: bg,

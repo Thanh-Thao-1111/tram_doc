@@ -1,6 +1,8 @@
+// lib/views/review/pages/select_book_page.dart
 import 'package:flutter/material.dart';
 import 'flashcard_player_page.dart'; 
-import '../../../viewmodels/review_viewmodel.dart'; // Import file ViewModel vừa sửa ở trên
+import '../../../viewmodels/review_viewmodel.dart';
+import '../../../models/book_model.dart';
 
 class SelectBookPage extends StatefulWidget {
   const SelectBookPage({super.key});
@@ -10,12 +12,11 @@ class SelectBookPage extends StatefulWidget {
 }
 
 class _SelectBookPageState extends State<SelectBookPage> {
-  // 1. Khởi tạo ViewModel
   final SelectBookViewModel _viewModel = SelectBookViewModel();
 
   @override
   void dispose() {
-    _viewModel.dispose(); // Hủy khi thoát
+    _viewModel.dispose();
     super.dispose();
   }
 
@@ -30,15 +31,13 @@ class _SelectBookPageState extends State<SelectBookPage> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Chọn sách ôn tập",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
+        title: const Text("Chọn sách ôn tập", 
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // 1. THANH TÌM KIẾM
+          // Thanh tìm kiếm
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Container(
@@ -48,28 +47,38 @@ class _SelectBookPageState extends State<SelectBookPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: TextField(
-                // GỌI HÀM LOGIC TÌM KIẾM TỪ VIEWMODEL
                 onChanged: (value) => _viewModel.searchBook(value),
                 decoration: const InputDecoration(
                   icon: Icon(Icons.search, color: Colors.grey),
-                  hintText: "Tìm tên sách...",
+                  hintText: "Tìm tên sách hoặc tác giả...",
                   border: InputBorder.none,
                 ),
               ),
             ),
           ),
 
-          // 2. DANH SÁCH SÁCH (Lắng nghe thay đổi từ ViewModel)
+          // Danh sách sách từ Firebase
           Expanded(
             child: ListenableBuilder(
               listenable: _viewModel,
               builder: (context, child) {
-                // Lấy danh sách từ ViewModel
+                if (_viewModel.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
                 final books = _viewModel.books;
 
                 if (books.isEmpty) {
                   return Center(
-                    child: Text("Không tìm thấy sách nào", style: TextStyle(color: Colors.grey[500])),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.library_books_outlined, size: 64, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text("Chưa có sách nào trong thư viện", 
+                          style: TextStyle(color: Colors.grey[500])),
+                      ],
+                    ),
                   );
                 }
 
@@ -78,14 +87,7 @@ class _SelectBookPageState extends State<SelectBookPage> {
                   itemCount: books.length,
                   itemBuilder: (context, index) {
                     final book = books[index];
-                    return _buildBookItem(
-                      context,
-                      title: book['title'],
-                      author: book['author'],
-                      cardCount: book['count'],
-                      imageUrl: book['image'],
-                      color: book['color'],
-                    );
+                    return _buildBookListItem(context, book);
                   },
                 );
               },
@@ -96,22 +98,13 @@ class _SelectBookPageState extends State<SelectBookPage> {
     );
   }
 
-  // Widget hiển thị item sách (Giữ nguyên vẻ đẹp UI cũ)
-  Widget _buildBookItem(
-    BuildContext context, {
-    required String title,
-    required String author,
-    required int cardCount,
-    required String imageUrl,
-    required Color color,
-  }) {
+  Widget _buildBookListItem(BuildContext context, BookModel book) {
     return GestureDetector(
       onTap: () {
-        // Chuyển sang màn hình Player
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => FlashcardPlayerPage(mode: "Ôn: $title"),
+            builder: (context) => FlashcardPlayerPage(mode: "Ôn: ${book.title}"),
           ),
         );
       },
@@ -122,72 +115,47 @@ class _SelectBookPageState extends State<SelectBookPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
           children: [
-            // Ảnh bìa sách
-            Container(
-              width: 60,
-              height: 90,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: color.withOpacity(0.2),
-                image: DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.cover,
-                  onError: (e, s) {}, // Tránh crash nếu link ảnh lỗi
+            // Ảnh bìa sách từ URL Firebase/Google Books
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                book.imageUrl,
+                width: 60,
+                height: 90,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 60, height: 90, color: Colors.grey[200],
+                  child: const Icon(Icons.book, color: Colors.grey),
                 ),
               ),
             ),
             const SizedBox(width: 16),
-            
-            // Thông tin chi tiết
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(book.title,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
-                  Text(
-                    author,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  ),
+                  Text(book.author,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                   const SizedBox(height: 12),
-                  
-                  // Tag số lượng thẻ
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          "$cardCount thẻ",
-                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text("Bấm để ôn", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                      Icon(Icons.chevron_right, size: 16, color: Colors.grey[400]),
-                    ],
-                  )
+                  // Trạng thái đọc
+                  Text(
+                    book.readingStatus == ReadingStatus.completed ? "Đã hoàn thành" : "Đang đọc",
+                    style: TextStyle(
+                      color: book.readingStatus == ReadingStatus.completed ? Colors.green : Colors.blue,
+                      fontSize: 12, fontWeight: FontWeight.w600
+                    ),
+                  ),
                 ],
               ),
             ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
           ],
         ),
       ),
