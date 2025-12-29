@@ -1,9 +1,53 @@
 import 'package:flutter/material.dart';
+import '../../../services/stats_service.dart';
 import '../widgets/profile_tokens.dart';
 import '../widgets/metric_card.dart';
 
-class StatsPage extends StatelessWidget {
+class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
+
+  @override
+  State<StatsPage> createState() => _StatsPageState();
+}
+
+class _StatsPageState extends State<StatsPage> {
+  final StatsService _statsService = StatsService();
+  
+  bool _isLoading = true;
+  int _booksRead = 0;
+  int _totalBooks = 0;
+  int _readingStreak = 0;
+  List<int> _weeklyMinutes = List.filled(7, 0);
+  List<Map<String, dynamic>> _readBooks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final stats = await _statsService.getAllStats();
+      final weeklyMinutes = await _statsService.getWeeklyReadingMinutes();
+      final readBooks = await _statsService.getReadBooks();
+      
+      if (mounted) {
+        setState(() {
+          _booksRead = stats['booksRead'] ?? 0;
+          _totalBooks = stats['totalBooks'] ?? 0;
+          _readingStreak = stats['readingStreak'] ?? 0;
+          _weeklyMinutes = weeklyMinutes;
+          _readBooks = readBooks;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,68 +59,211 @@ class StatsPage extends StatelessWidget {
         leading: const BackButton(color: ProfileTokens.text),
         title: const Text('Thống kê', style: TextStyle(fontWeight: FontWeight.w900, color: ProfileTokens.text)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadStats,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                children: [
+                  // Main stats
+                  Row(
+                    children: [
+                      Expanded(
+                        child: MetricCard(
+                          value: '$_booksRead',
+                          label: 'Sách đã đọc',
+                          valueColor: ProfileTokens.primary,
+                          bg: ProfileTokens.primarySoft,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: MetricCard(
+                          value: '$_readingStreak',
+                          label: 'Chuỗi đọc (ngày)',
+                          valueColor: ProfileTokens.orange,
+                          bg: ProfileTokens.orangeSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: MetricCard(
+                          value: '$_totalBooks',
+                          label: 'Tổng số sách',
+                          valueColor: ProfileTokens.blue,
+                          bg: ProfileTokens.blueSoft,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: MetricCard(
+                          value: '${_weeklyMinutes.fold(0, (a, b) => a + b)}',
+                          label: 'Phút đọc tuần này',
+                          valueColor: ProfileTokens.purple,
+                          bg: ProfileTokens.purpleSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    title: 'Thời gian đọc tuần này',
+                    trailing: const Icon(Icons.calendar_today_outlined, size: 18, color: ProfileTokens.subText),
+                    child: SizedBox(
+                      height: 190,
+                      child: _WeeklyBarChart(values: _weeklyMinutes.map((e) => e.toDouble()).toList()),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+                  _buildReadingHistory(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildReadingHistory() {
+    return Container(
+      decoration: BoxDecoration(
+        color: ProfileTokens.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Expanded(
-                child: MetricCard(
-                  value: '50',
-                  label: 'Sách đã đọc',
-                  valueColor: ProfileTokens.primary,
-                  bg: ProfileTokens.primarySoft,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Lịch sử sách đã đọc',
+                  style: TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: MetricCard(
-                  value: '300',
-                  label: 'Chuỗi đọc (ngày)',
-                  valueColor: ProfileTokens.orange,
-                  bg: ProfileTokens.orangeSoft,
-                ),
+              Text(
+                '$_booksRead cuốn',
+                style: const TextStyle(color: ProfileTokens.primary, fontWeight: FontWeight.w600),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: const [
-              Expanded(
-                child: MetricCard(
-                  value: '15',
-                  label: 'Flashcards',
-                  valueColor: ProfileTokens.blue,
-                  bg: ProfileTokens.blueSoft,
+          
+          if (_readBooks.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Text(
+                  'Chưa có sách nào được hoàn thành',
+                  style: TextStyle(color: ProfileTokens.subText),
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: MetricCard(
-                  value: '12',
-                  label: 'Chuỗi ôn tập (ngày)',
-                  valueColor: ProfileTokens.purple,
-                  bg: ProfileTokens.purpleSoft,
+            )
+          else
+            ...(_readBooks.take(5).map((book) => _ReadBookItem(
+              title: book['title'] ?? '',
+              author: book['author'] ?? '',
+              imageUrl: book['imageUrl'] ?? '',
+              finishedAt: book['finishedAt'],
+            ))),
+          
+          if (_readBooks.length > 5)
+            TextButton(
+              onPressed: () {}, // TODO: Navigate to full history
+              child: Text('Xem tất cả ${_readBooks.length} cuốn'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadBookItem extends StatelessWidget {
+  final String title;
+  final String author;
+  final String imageUrl;
+  final DateTime? finishedAt;
+
+  const _ReadBookItem({
+    required this.title,
+    required this.author,
+    required this.imageUrl,
+    this.finishedAt,
+  });
+
+  String get _formattedDate {
+    if (finishedAt == null) return '';
+    return '${finishedAt!.day}/${finishedAt!.month}/${finishedAt!.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: ProfileTokens.bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 40,
+              height: 55,
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: const Color(0xFFE5E7EB),
+                        child: const Icon(Icons.menu_book, size: 20, color: Colors.white),
+                      ),
+                    )
+                  : Container(
+                      color: const Color(0xFFE5E7EB),
+                      child: const Icon(Icons.menu_book, size: 20, color: Colors.white),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  author,
+                  style: const TextStyle(color: ProfileTokens.subText, fontSize: 11),
+                  maxLines: 1,
+                ),
+              ],
+            ),
           ),
-
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'Thời gian đọc tuần này',
-            trailing: const Icon(Icons.calendar_today_outlined, size: 18, color: ProfileTokens.subText),
-            child: const SizedBox(height: 190, child: _WeeklyBarChart()),
-          ),
-
-          const SizedBox(height: 12),
-          _SectionCard(
-            title: 'Sách đã đọc theo tháng',
-            child: const SizedBox(height: 170, child: _MonthlyLineChart()),
-          ),
-
-          const SizedBox(height: 12),
-          const _GoalCard(),
+          if (finishedAt != null)
+            Column(
+              children: [
+                const Icon(Icons.check_circle, color: ProfileTokens.primary, size: 18),
+                const SizedBox(height: 2),
+                Text(
+                  _formattedDate,
+                  style: const TextStyle(color: ProfileTokens.subText, fontSize: 10),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -116,12 +303,17 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _WeeklyBarChart extends StatelessWidget {
-  const _WeeklyBarChart();
+  final List<double> values;
+  
+  const _WeeklyBarChart({required this.values});
 
   @override
   Widget build(BuildContext context) {
+    // Ensure we have 7 values
+    final chartValues = values.length == 7 ? values : List.filled(7, 0.0);
+    
     return CustomPaint(
-      painter: _BarPainter(values: const [50, 60, 35, 90, 75, 120, 105]),
+      painter: _BarPainter(values: chartValues),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
         child: Align(
@@ -164,14 +356,15 @@ class _BarPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
 
-    final maxV = values.reduce((a, b) => a > b ? a : b);
+    final maxV = values.isEmpty ? 1.0 : values.reduce((a, b) => a > b ? a : b);
+    final effectiveMax = maxV == 0 ? 1.0 : maxV;
     final usableH = size.height - 34;
     final barW = size.width / (values.length * 1.6);
     final gap = barW * 0.6;
 
     double x = gap;
     for (final v in values) {
-      final h = (v / maxV) * usableH;
+      final h = (v / effectiveMax) * usableH;
       final r = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, usableH - h, barW, h),
         const Radius.circular(6),
@@ -183,137 +376,4 @@ class _BarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BarPainter oldDelegate) => false;
-}
-
-class _MonthlyLineChart extends StatelessWidget {
-  const _MonthlyLineChart();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _LinePainter(values: const [5, 7, 6, 9, 8, 10]),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 6, 10, 12),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              _AxisLabel('T1'), _AxisLabel('T2'), _AxisLabel('T3'),
-              _AxisLabel('T4'), _AxisLabel('T5'), _AxisLabel('T6'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LinePainter extends CustomPainter {
-  final List<double> values;
-  const _LinePainter({required this.values});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grid = Paint()..color = ProfileTokens.divider..strokeWidth = 1;
-    final line = Paint()..color = ProfileTokens.blue..strokeWidth = 3..style = PaintingStyle.stroke;
-    final dot = Paint()..color = ProfileTokens.blue..style = PaintingStyle.fill;
-
-    for (int i = 0; i <= 3; i++) {
-      final y = (size.height - 26) * (i / 3);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    final minV = values.reduce((a, b) => a < b ? a : b);
-    final usableH = size.height - 30;
-
-    final dx = size.width / (values.length - 1);
-    Offset p(int i) {
-      final v = values[i];
-      final t = (v - minV) / ((maxV - minV) == 0 ? 1 : (maxV - minV));
-      final y = usableH - t * usableH;
-      return Offset(i * dx, y);
-    }
-
-    final path = Path()..moveTo(p(0).dx, p(0).dy);
-    for (int i = 1; i < values.length; i++) {
-      path.lineTo(p(i).dx, p(i).dy);
-    }
-    canvas.drawPath(path, line);
-
-    for (int i = 0; i < values.length; i++) {
-      canvas.drawCircle(p(i), 5, dot);
-      canvas.drawCircle(p(i), 8, Paint()..color = Colors.white);
-      canvas.drawCircle(p(i), 5, dot);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _LinePainter oldDelegate) => false;
-}
-
-class _GoalCard extends StatelessWidget {
-  const _GoalCard();
-
-  @override
-  Widget build(BuildContext context) {
-    const done = 50;
-    const total = 60;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: ProfileTokens.card,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Mục tiêu đọc sách', style: TextStyle(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          Row(
-            children: const [
-              Expanded(child: Text('Mục tiêu năm 2025', style: TextStyle(color: ProfileTokens.subText))),
-              Text('$done/$total cuốn', style: TextStyle(color: ProfileTokens.primary, fontWeight: FontWeight.w800)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 10,
-              value: done / total,
-              backgroundColor: ProfileTokens.divider,
-              valueColor: const AlwaysStoppedAnimation(ProfileTokens.primary),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const _GoalRow(left: 'Còn lại', right: '10 cuốn'),
-          const _GoalRow(left: 'Trung bình/tháng', right: '8.3 cuốn'),
-          const _GoalRow(left: 'Dự kiến hoàn thành', right: 'Tháng 12, 2025', rightColor: ProfileTokens.primary),
-        ],
-      ),
-    );
-  }
-}
-
-class _GoalRow extends StatelessWidget {
-  final String left;
-  final String right;
-  final Color? rightColor;
-  const _GoalRow({required this.left, required this.right, this.rightColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Expanded(child: Text(left, style: const TextStyle(color: ProfileTokens.subText))),
-          Text(right, style: TextStyle(color: rightColor ?? ProfileTokens.text, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
 }

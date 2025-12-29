@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../../repositories/auth_repository.dart';
 import '../../main_page.dart';
 import 'signup_page.dart';
 import 'forgot_password_page.dart';
-import '../home_page.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});
@@ -16,8 +17,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthRepository _authService = AuthRepository();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   static const Color primaryGreen = Color(0xFF3BA66B);
   static const Color inputBg = Color(0xFFF9FAFB);
@@ -43,14 +47,70 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _login() {
+  void _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) =>  MainPage()),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      await _authService.signIn(
+        emailOrUsername: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _loginWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      final userCredential = await _authService.signInWithGoogle();
+
+      if (userCredential == null) {
+        // User cancelled
+        return;
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
+    }
   }
 
   @override
@@ -197,6 +257,64 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                /// DIVIDER
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey.shade300)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'hoặc',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey.shade300)),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                /// GOOGLE SIGN-IN BUTTON
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isGoogleLoading ? null : _loginWithGoogle,
+                    icon: _isGoogleLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Image.network(
+                            'https://www.google.com/favicon.ico',
+                            width: 20,
+                            height: 20,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.g_mobiledata, size: 24),
+                          ),
+                    label: Text(
+                      'Đăng nhập với Google',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
                 ),

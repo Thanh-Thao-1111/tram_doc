@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../repositories/auth_repository.dart';
+import '../../main_page.dart';
 import 'login_page.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -16,9 +18,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final AuthRepository _authService = AuthRepository();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   static const Color primaryGreen = Color(0xFF3BA66B);
   static const Color inputBg = Color(0xFFF9FAFB);
@@ -35,6 +40,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
         borderSide: BorderSide.none,
       ),
     );
+  }
+
+  void _signUpWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      final userCredential = await _authService.signInWithGoogle();
+
+      if (userCredential == null) {
+        // User cancelled
+        return;
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đăng ký thành công!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
+    }
   }
 
   @override
@@ -181,6 +226,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 _socialButton(
                   icon: Icons.g_mobiledata,
                   text: 'Tiếp tục với Google',
+                  isLoading: _isGoogleLoading,
+                  onPressed: _signUpWithGoogle,
                 ),
 
                 const SizedBox(height: 12),
@@ -199,15 +246,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     key: const Key('signupButton'),
-                    onPressed: () {
+                    onPressed: _isLoading ? null : () async {
                       if (!_formKey.currentState!.validate()) return;
-                      // TODO: call sign-up API
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LoginScreen(),
-                        ),
-                      );
+
+                      setState(() => _isLoading = true);
+
+                      try {
+                        await _authService.createUserWithEmailAndPassword(
+                          email: _emailController.text,
+                          password: _passwordController.text,
+                          username: _usernameController.text,
+                        );
+
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đăng ký thành công! Vui lòng đăng nhập.'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LoginScreen(),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString()),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } finally {
+                        if (mounted) {
+                          setState(() => _isLoading = false);
+                        }
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryGreen,
@@ -218,14 +297,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
-                      'Đăng ký',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'Đăng ký',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
 
@@ -233,22 +321,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 // LOGIN LINK
                 Center(
-                  child: RichText(
-                    text: TextSpan(
-                      text: 'Đã có tài khoản? ',
-                      style: GoogleFonts.inter(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Đăng nhập ngay',
-                          style: GoogleFonts.inter(
-                            color: primaryGreen,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                      );
+                    },
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'Đã có tài khoản? ',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey,
+                          fontSize: 14,
                         ),
-                      ],
+                        children: [
+                          TextSpan(
+                            text: 'Đăng nhập ngay',
+                            style: GoogleFonts.inter(
+                              color: primaryGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -302,12 +398,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required IconData icon,
     required String text,
     Color? iconColor,
+    VoidCallback? onPressed,
+    bool isLoading = false,
   }) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () {},
-        icon: Icon(icon, color: iconColor ?? Colors.black),
+        onPressed: isLoading ? null : onPressed,
+        icon: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon, color: iconColor ?? Colors.black),
         label: Text(
           text,
           style: GoogleFonts.inter(fontSize: 15),

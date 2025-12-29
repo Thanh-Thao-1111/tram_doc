@@ -11,12 +11,25 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  camera: ^0.10.5+9
+  google_mlkit_text_recognition: ^0.11.0
+
+  firebase_core: ^2.27.0
+  cloud_firestore: ^4.15.0
+  firebase_auth: ^4.17.0
+  google_sign_in: ^6.2.1
 
   # Google Fonts
   google_fonts: ^6.2.1
-
   cupertino_icons: ^1.0.8
   provider: ^6.1.5+1
+  intl: ^0.20.2
+
+  # QR/Barcode scanning
+  mobile_scanner: ^5.1.1
+  
+  # HTTP for Google Books API
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

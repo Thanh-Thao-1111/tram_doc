@@ -1,48 +1,64 @@
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../viewmodels/community_viewmodel.dart';
 import '../widgets/community_tokens.dart';
 import '../widgets/post_card.dart';
 
-class CommunityFeedTab extends StatelessWidget {
+class CommunityFeedTab extends StatefulWidget {
   const CommunityFeedTab({super.key});
 
   @override
+  State<CommunityFeedTab> createState() => _CommunityFeedTabState();
+}
+
+class _CommunityFeedTabState extends State<CommunityFeedTab> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize streams
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CommunityViewModel>().initStreams();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      children: const [
-        PostCard(
-          name: 'An Nguyễn',
-          actionText: 'đã ghi chú về Muôn Kiếp Nhân Sinh',
-          time: '2 giờ trước',
-          bookTitle: 'Muôn Kiếp Nhân Sinh',
-          bookAuthor: 'Nguyên Phong',
-          note: 'Luật nhân quả đừng đợi thấy mới tin. Nhân quả là một thực tại, một chân lý...',
-          avatarAsset: 'assets/images/avatars/an_nguyen.png',
-          bookCoverAsset: 'assets/images/books/3.png',
-          // bookCoverAsset: 'assets/images/books/book1.png',
+    final viewModel = context.watch<CommunityViewModel>();
+    final posts = viewModel.posts;
+
+    if (posts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.article_outlined, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            const Text(
+              'Chưa có bài viết nào',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hãy đăng ghi chú đầu tiên của bạn!',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
         ),
-        PostCard(
-          name: 'Minh Trần',
-          actionText: 'vừa hoàn thành đọc',
-          time: '8 giờ trước',
-          bookTitle: 'Nhà Giả Kim',
-          bookAuthor: 'Paulo Coelho',
-          avatarAsset: 'assets/images/avatars/minh_tran.png',
-          bookCoverAsset: 'assets/images/books/2.png',
-          // bookCoverAsset: 'assets/images/books/book2.png',
-        ),
-        PostCard(
-          name: 'Lan Anh',
-          actionText: 'đã thêm vào kệ "Muốn đọc"',
-          time: 'Hôm qua',
-          bookTitle: 'Đắc Nhân Tâm',
-          bookAuthor: 'Dale Carnegie',
-          avatarAsset: 'assets/images/avatars/lan_anh.png',
-          bookCoverAsset: 'assets/images/books/3.png',
-          // bookCoverAsset: 'assets/images/books/book3.png',
-        ),
-      ],
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        viewModel.initStreams();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
+          final post = posts[index];
+          return PostCard(post: post);
+        },
+      ),
     );
   }
 }

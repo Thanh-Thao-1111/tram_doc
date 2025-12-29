@@ -18,10 +18,11 @@ class ReviewPage extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
         titleSpacing: 16,
         title: Row(
           children: const [
-            Text("🧠 ", style: TextStyle(fontSize: 24)),
+            Text("", style: TextStyle(fontSize: 24)),
             Text(
               "Ôn tập ghi nhớ",
               style: TextStyle(

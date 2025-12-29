@@ -5,7 +5,8 @@ class SuggestionCard extends StatelessWidget {
   final String line1;
   final String title;
   final String author;
-  final String? coverAsset;
+  final String? coverAsset; // Asset image
+  final String? coverUrl;   // Network image URL
   final VoidCallback onTap;
 
   const SuggestionCard({
@@ -14,6 +15,7 @@ class SuggestionCard extends StatelessWidget {
     required this.title,
     required this.author,
     this.coverAsset,
+    this.coverUrl,
     required this.onTap,
   });
 
@@ -33,12 +35,7 @@ class SuggestionCard extends StatelessWidget {
             child: SizedBox(
               width: 60,
               height: 80,
-              child: coverAsset == null
-                  ? Container(
-                      color: const Color(0xFFE5E7EB),
-                      child: const Icon(Icons.menu_book, color: Colors.white),
-                    )
-                  : Image.asset(coverAsset!, fit: BoxFit.cover),
+              child: _buildCoverImage(),
             ),
           ),
           const SizedBox(width: 12),
@@ -71,6 +68,29 @@ class SuggestionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCoverImage() {
+    // Priority: Network URL > Asset > Placeholder
+    if (coverUrl != null && coverUrl!.isNotEmpty) {
+      return Image.network(
+        coverUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFE5E7EB),
+          child: const Icon(Icons.menu_book, color: Colors.white),
+        ),
+      );
+    }
+    
+    if (coverAsset != null && coverAsset!.isNotEmpty) {
+      return Image.asset(coverAsset!, fit: BoxFit.cover);
+    }
+    
+    return Container(
+      color: const Color(0xFFE5E7EB),
+      child: const Icon(Icons.menu_book, color: Colors.white),
     );
   }
 }

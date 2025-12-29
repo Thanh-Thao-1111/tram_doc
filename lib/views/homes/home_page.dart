@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tram_doc/core/assets/app_images.dart';
 
 import '../../models/book_model.dart';
@@ -8,15 +10,67 @@ import '../../viewmodels/home_viewmodel.dart';
 import '../books/add_book_page.dart';
 import '../books/pages/add_bookshelf_page.dart';
 import 'pages/notification_page.dart';
+import '../review/pages/flashcard_player_page.dart';
 
 const Color primaryAppColor = Color(0xFF3BA66B);
 const Color accentGreenColor = Color(0xFF5CB85C);
 const Color descriptionBlueColor = Color(0xFF336699);
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   final HomeViewModel vm = HomeViewModel();
+  String _username = '';
+  String _greeting = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+    _updateGreeting();
+  }
+
+  void _updateGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      _greeting = 'Chào buổi sáng';
+    } else if (hour < 18) {
+      _greeting = 'Chào buổi chiều';
+    } else {
+      _greeting = 'Chào buổi tối';
+    }
+  }
+
+  Future<void> _loadUserInfo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Try to get username from Firestore
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (doc.exists && doc.data()?['username'] != null) {
+          setState(() {
+            _username = doc.data()!['username'];
+          });
+          return;
+        }
+      } catch (e) {
+        // Firestore failed, use displayName or email
+      }
+      
+      // Fallback to displayName or email
+      setState(() {
+        _username = user.displayName ?? user.email?.split('@').first ?? 'Bạn';
+      });
+    }
+  }
 
   void _openAddBook(BuildContext context) {
     Navigator.push(
@@ -25,10 +79,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _openAddToShelf(BuildContext context) {
+  void _openAddToShelf(BuildContext context, BookModel book) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddBookPreviewPage()),
+      MaterialPageRoute(builder: (_) => AddBookPreviewPage(book: book)),
     );
   }
 
@@ -58,7 +112,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     _sectionTitle('Đang đọc'),
                     _currentlyReading(),
-                    _reviewSection(),
+                    _reviewSection(context),
                     _circleUpdates(),
                     _suggestedBooks(context),
                   ],
@@ -73,7 +127,17 @@ class HomeScreen extends StatelessWidget {
 
   // ================= HEADER =================
   Widget _header(BuildContext context) {
-    return Padding(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
@@ -84,7 +148,9 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Chào buổi sáng, Nam!',
+              _username.isNotEmpty 
+                  ? '$_greeting, $_username!' 
+                  : '$_greeting!',
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -143,7 +209,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ================= REVIEW =================
-  Widget _reviewSection() {
+  Widget _reviewSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -182,7 +248,15 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Chuyển sang trang ôn tập ngẫu nhiên
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FlashcardPlayerPage(mode: "Ngẫu nhiên"),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentGreenColor,
                       foregroundColor: Colors.white,
@@ -210,7 +284,19 @@ class HomeScreen extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: vm.circleUpdates.map((u) {
+      children: [
+        // Tiêu đề
+        Text(
+          'Tin mới từ vòng tròn',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Danh sách tin
+        ...vm.circleUpdates.map((u) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
@@ -277,7 +363,8 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         );
-      }).toList(),
+      }),
+      ],
     ),
   );
 }
@@ -348,7 +435,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () => _openAddToShelf(context),
+                    onPressed: () => _openAddToShelf(context, b),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentGreenColor,
                       foregroundColor: Colors.white,
