@@ -3,6 +3,7 @@ import '../models/book_model.dart';
 import '../models/note_model.dart';
 import '../models/review_model.dart';
 import '../repositories/book_repository.dart';
+import '../../models/card_model.dart';
 
 class LibraryViewModel extends ChangeNotifier {
   final BookRepository _bookRepo = BookRepository();
@@ -214,6 +215,7 @@ class LibraryViewModel extends ChangeNotifier {
   }
 
   // ====================== FLASHCARDS ======================
+  
   // TODO: Implement flashcards storage in Firestore
   void createFlashcard(String question, String answer) {
     // Stub implementation - flashcards functionality to be implemented

@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
-import 'flashcard_player_page.dart'; // Import để chuyển trang khi chọn sách
+import 'flashcard_player_page.dart'; 
+import '../../../viewmodels/review_viewmodel.dart'; // Import file ViewModel vừa sửa ở trên
 
-class SelectBookPage extends StatelessWidget {
+class SelectBookPage extends StatefulWidget {
   const SelectBookPage({super.key});
+
+  @override
+  State<SelectBookPage> createState() => _SelectBookPageState();
+}
+
+class _SelectBookPageState extends State<SelectBookPage> {
+  // 1. Khởi tạo ViewModel
+  final SelectBookViewModel _viewModel = SelectBookViewModel();
+
+  @override
+  void dispose() {
+    _viewModel.dispose(); // Hủy khi thoát
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +47,10 @@ class SelectBookPage extends StatelessWidget {
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const TextField(
-                decoration: InputDecoration(
+              child: TextField(
+                // GỌI HÀM LOGIC TÌM KIẾM TỪ VIEWMODEL
+                onChanged: (value) => _viewModel.searchBook(value),
+                decoration: const InputDecoration(
                   icon: Icon(Icons.search, color: Colors.grey),
                   hintText: "Tìm tên sách...",
                   border: InputBorder.none,
@@ -42,52 +59,36 @@ class SelectBookPage extends StatelessWidget {
             ),
           ),
 
-          // 2. DANH SÁCH SÁCH
+          // 2. DANH SÁCH SÁCH (Lắng nghe thay đổi từ ViewModel)
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildBookItem(
-                  context,
-                  title: "Đắc Nhân Tâm",
-                  author: "Dale Carnegie",
-                  cardCount: 120,
-                  imageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1449557635i/4865.jpg",
-                  color: Colors.blue,
-                ),
-                _buildBookItem(
-                  context,
-                  title: "Nhà Giả Kim",
-                  author: "Paulo Coelho",
-                  cardCount: 85,
-                  imageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1654371463i/18144590.jpg",
-                  color: Colors.purple,
-                ),
-                _buildBookItem(
-                  context,
-                  title: "Atomic Habits",
-                  author: "James Clear",
-                  cardCount: 200,
-                  imageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1655988385i/40121378.jpg",
-                  color: Colors.green,
-                ),
-                _buildBookItem(
-                  context,
-                  title: "Tâm lý học về tiền",
-                  author: "Morgan Housel",
-                  cardCount: 45,
-                  imageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1635328224i/59495633.jpg",
-                  color: Colors.orange,
-                ),
-                 _buildBookItem(
-                  context,
-                  title: "Nghĩ Giàu Làm Giàu",
-                  author: "Napoleon Hill",
-                  cardCount: 110,
-                  imageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1463241782i/30186948.jpg",
-                  color: Colors.red,
-                ),
-              ],
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, child) {
+                // Lấy danh sách từ ViewModel
+                final books = _viewModel.books;
+
+                if (books.isEmpty) {
+                  return Center(
+                    child: Text("Không tìm thấy sách nào", style: TextStyle(color: Colors.grey[500])),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: books.length,
+                  itemBuilder: (context, index) {
+                    final book = books[index];
+                    return _buildBookItem(
+                      context,
+                      title: book['title'],
+                      author: book['author'],
+                      cardCount: book['count'],
+                      imageUrl: book['image'],
+                      color: book['color'],
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -95,7 +96,7 @@ class SelectBookPage extends StatelessWidget {
     );
   }
 
-  // Widget hiển thị từng cuốn sách
+  // Widget hiển thị item sách (Giữ nguyên vẻ đẹp UI cũ)
   Widget _buildBookItem(
     BuildContext context, {
     required String title,
@@ -106,7 +107,7 @@ class SelectBookPage extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: () {
-        // Khi chọn sách -> Chuyển sang màn hình học với mode là tên sách
+        // Chuyển sang màn hình Player
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -137,15 +138,17 @@ class SelectBookPage extends StatelessWidget {
               height: 90,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
+                color: color.withOpacity(0.2),
                 image: DecorationImage(
                   image: NetworkImage(imageUrl),
                   fit: BoxFit.cover,
+                  onError: (e, s) {}, // Tránh crash nếu link ảnh lỗi
                 ),
               ),
             ),
             const SizedBox(width: 16),
             
-            // Thông tin sách
+            // Thông tin chi tiết
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +166,7 @@ class SelectBookPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   
-                  // Thanh tiến độ nhỏ & Số lượng thẻ
+                  // Tag số lượng thẻ
                   Row(
                     children: [
                       Container(
@@ -174,18 +177,11 @@ class SelectBookPage extends StatelessWidget {
                         ),
                         child: Text(
                           "$cardCount thẻ",
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        "Bấm để ôn",
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                      ),
+                      Text("Bấm để ôn", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                       Icon(Icons.chevron_right, size: 16, color: Colors.grey[400]),
                     ],
                   )
