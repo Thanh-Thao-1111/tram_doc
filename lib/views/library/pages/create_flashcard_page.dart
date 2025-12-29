@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../viewmodels/library_viewmodel.dart';
+import '../../../viewmodels/library_viewmodel.dart'; // Import file gốc ở đây
 
 class CreateFlashcardPage extends StatefulWidget {
   const CreateFlashcardPage({super.key});
@@ -17,23 +17,26 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
   String _question = '';
   String _answer = '';
 
+  // Hàm xử lý Lưu
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      // Gọi hàm từ ViewModel gốc
+      context.read<LibraryViewModel>().createFlashcard(_question, _answer);
+
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã tạo thẻ mới thành công!")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.read<LibraryViewModel>();
+    final viewModel = context.watch<LibraryViewModel>();
+    final book = viewModel.currentBook;
 
-    void submitForm() {
-      if (_formKey.currentState!.validate()) {
-        _formKey.currentState!.save();
-
-        // 4. Gọi ViewModel để xử lý logic tạo thẻ
-        viewModel.createFlashcard(_question, _answer);
-
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Đã tạo thẻ mới thành công!")),
-        );
-      }
-    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -50,7 +53,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
         ),
         actions: [
           TextButton(
-            onPressed: submitForm,
+            onPressed: _submitForm,
             child: const Text(
               "Lưu",
               style: TextStyle(
@@ -69,7 +72,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Banner chọn từ ghi chú có sẵn
+              // --- BANNER SÁCH ---
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -83,52 +86,44 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            "Chọn từ ghi chú có sẵn",
+                        children: [
+                          const Text(
+                            "Tạo thẻ cho sách:",
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            "Sapiens: Lược sử loài người - Trang 123",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
+                            book?.title ?? "Chưa chọn sách",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: Colors.grey),
                   ],
                 ),
               ),
 
               const SizedBox(height: 24),
 
-              // Input Mặt trước
-              const Text(
-                "Mặt trước",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              // --- INPUT MẶT TRƯỚC ---
+              const Text("Mặt trước", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: TextFormField(
-                  maxLines: null,
                   minLines: 3,
-                  decoration: InputDecoration(
-                    hintText: "Nhập câu hỏi, từ khóa...",
+                  maxLines: null,
+                  decoration: const InputDecoration(
+                    hintText: "Nhập câu hỏi...",
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.grey),
-                    errorStyle: TextStyle(color: Colors.redAccent),
                   ),
+                  // Gọi validate từ ViewModel
                   validator: (value) => viewModel.validateFlashcardSide(value, "mặt trước"),
                   onSaved: (value) => _question = value!.trim(),
                 ),
@@ -136,29 +131,24 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
 
               const SizedBox(height: 24),
 
-              // Input Mặt sau
-              const Text(
-                "Mặt sau",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              // --- INPUT MẶT SAU ---
+              const Text("Mặt sau", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               Container(
-                height: 120,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: TextFormField(
-                  maxLines: null,
                   minLines: 3,
-                  decoration: InputDecoration(
-                    hintText: "Nhập câu trả lời, định nghĩa...",
+                  maxLines: null,
+                  decoration: const InputDecoration(
+                    hintText: "Nhập câu trả lời...",
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.grey),
-                    errorStyle: TextStyle(color: Colors.redAccent),
                   ),
+                  // Gọi validate từ ViewModel
                   validator: (value) => viewModel.validateFlashcardSide(value, "mặt sau"),
                   onSaved: (value) => _answer = value!.trim(),
                 ),
@@ -166,27 +156,17 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
 
               const SizedBox(height: 40),
 
-              // Nút Tạo Flashcard
+              // --- NÚT TẠO ---
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed:submitForm,
+                  onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text(
-                    "Tạo Flashcard",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  child: const Text("Tạo Flashcard", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
