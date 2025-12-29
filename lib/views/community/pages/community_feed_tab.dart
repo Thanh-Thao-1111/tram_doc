@@ -26,6 +26,11 @@ class _CommunityFeedTabState extends State<CommunityFeedTab> {
     final viewModel = context.watch<CommunityViewModel>();
     final posts = viewModel.posts;
 
+    // Hiện loading khi đang tải
+    if (viewModel.isLoading && posts.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (posts.isEmpty) {
       return Center(
         child: Column(
@@ -39,7 +44,7 @@ class _CommunityFeedTabState extends State<CommunityFeedTab> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Hãy đăng ghi chú đầu tiên của bạn!',
+              'Hãy kết bạn và chia sẻ ghi chú!',
               style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ],

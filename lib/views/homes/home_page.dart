@@ -103,6 +103,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final libraryVm = context.watch<LibraryViewModel>();
+    final hasReadingBooks = libraryVm.readingBooks.isNotEmpty;
+    
     return Material(
       color: Colors.white,
       child: SafeArea(
@@ -118,10 +121,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle('Đang đọc'),
-                    _currentlyReading(),
+                    // Chỉ hiện "Đang đọc" nếu có sách thật
+                    if (hasReadingBooks) ...[
+                      _sectionTitle('Đang đọc'),
+                      _currentlyReading(),
+                    ],
                     _reviewSection(context),
-                    _circleUpdates(),
+                    // Ẩn "Tin mới từ vòng tròn" - sẽ hiện khi có bạn bè thật
+                    // _circleUpdates(),
                     _suggestedBooks(context),
                   ],
                 ),
@@ -200,27 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final libraryVm = context.watch<LibraryViewModel>();
     final readingBooks = libraryVm.readingBooks;
     
-    if (readingBooks.isEmpty) {
-      // Fallback to static covers if no books from Firestore
-      return SizedBox(
-        height: 190,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          scrollDirection: Axis.horizontal,
-          itemCount: vm.currentlyReadingCovers.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemBuilder: (_, index) => ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              vm.currentlyReadingCovers[index],
-              width: 130,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      );
-    }
-    
+    // Section này chỉ hiện khi có sách thật (đã check ở build method)
     return SizedBox(
       height: 190,
       child: ListView.separated(
