@@ -99,10 +99,11 @@ class _HomeScreenState extends State<HomeScreen> {
       color: Colors.white,
       child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Fixed header at top
+            // Header cố định không scroll
             _header(context),
-            // Scrollable content
+            // Phần nội dung có thể scroll
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 24),
