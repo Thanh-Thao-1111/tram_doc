@@ -139,4 +139,77 @@ class BookRepository {
       return false;
     }
   }
+
+  // =================== NOTES ===================
+  
+  /// Add a note to a book
+  Future<String> addNote(String bookId, String content, int pageNumber) async {
+    if (_currentUserId == null) {
+      throw Exception('Bạn cần đăng nhập để thêm ghi chú');
+    }
+
+    try {
+      final noteRef = await _booksCollection.doc(bookId).collection('notes').add({
+        'content': content,
+        'page': pageNumber,
+        'date': FieldValue.serverTimestamp(),
+        'userId': _currentUserId,
+      });
+      return noteRef.id;
+    } catch (e) {
+      throw Exception('Không thể thêm ghi chú: $e');
+    }
+  }
+
+  /// Get all notes for a book
+  Future<List<Map<String, dynamic>>> getNotes(String bookId) async {
+    try {
+      final querySnapshot = await _booksCollection
+          .doc(bookId)
+          .collection('notes')
+          .orderBy('date', descending: true)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      // If orderBy fails due to missing index, try without ordering
+      try {
+        final querySnapshot = await _booksCollection
+            .doc(bookId)
+            .collection('notes')
+            .get();
+
+        final notes = querySnapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+        
+        // Sort on client side
+        notes.sort((a, b) {
+          final dateA = a['date'] as Timestamp?;
+          final dateB = b['date'] as Timestamp?;
+          if (dateA == null || dateB == null) return 0;
+          return dateB.compareTo(dateA);
+        });
+        
+        return notes;
+      } catch (e2) {
+        throw Exception('Không thể tải ghi chú: $e2');
+      }
+    }
+  }
+
+  /// Delete a note
+  Future<void> deleteNote(String bookId, String noteId) async {
+    try {
+      await _booksCollection.doc(bookId).collection('notes').doc(noteId).delete();
+    } catch (e) {
+      throw Exception('Không thể xóa ghi chú: $e');
+    }
+  }
 }

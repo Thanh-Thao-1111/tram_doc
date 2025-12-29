@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:tram_doc/core/assets/app_images.dart';
 
 import '../../models/book_model.dart';
 import '../../viewmodels/home_viewmodel.dart';
+import '../../viewmodels/library_viewmodel.dart';
 
 import '../books/add_book_page.dart';
 import '../books/pages/add_bookshelf_page.dart';
+import '../library/pages/book_detail_page.dart';
 import 'pages/notification_page.dart';
 import '../review/pages/flashcard_player_page.dart';
 
@@ -31,8 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserInfo();
     _updateGreeting();
+    _listenToUserChanges();
   }
 
   void _updateGreeting() {
@@ -46,28 +49,33 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadUserInfo() async {
+  void _listenToUserChanges() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Try to get username from Firestore
-      try {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (doc.exists && doc.data()?['username'] != null) {
+      // Listen to real-time changes from Firestore
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((doc) {
+        if (mounted && doc.exists) {
+          final data = doc.data();
           setState(() {
-            _username = doc.data()!['username'];
+            // Priority: displayName > username > email
+            _username = data?['displayName'] ?? 
+                        data?['username'] ?? 
+                        user.displayName ?? 
+                        user.email?.split('@').first ?? 
+                        'Bạn';
           });
-          return;
         }
-      } catch (e) {
-        // Firestore failed, use displayName or email
-      }
-      
-      // Fallback to displayName or email
-      setState(() {
-        _username = user.displayName ?? user.email?.split('@').first ?? 'Bạn';
+      }, onError: (e) {
+        // Fallback to Firebase Auth displayName or email
+        if (mounted) {
+          setState(() {
+            _username = user.displayName ?? user.email?.split('@').first ?? 'Bạn';
+          });
+        }
       });
     }
   }
@@ -189,21 +197,62 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================= CURRENTLY READING =================
   Widget _currentlyReading() {
+    final libraryVm = context.watch<LibraryViewModel>();
+    final readingBooks = libraryVm.readingBooks;
+    
+    if (readingBooks.isEmpty) {
+      // Fallback to static covers if no books from Firestore
+      return SizedBox(
+        height: 190,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          itemCount: vm.currentlyReadingCovers.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (_, index) => ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              vm.currentlyReadingCovers[index],
+              width: 130,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+    }
+    
     return SizedBox(
       height: 190,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: vm.currentlyReadingCovers.length,
+        itemCount: readingBooks.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            vm.currentlyReadingCovers[index],
-            width: 130,
-            fit: BoxFit.cover,
-          ),
-        ),
+        itemBuilder: (_, index) {
+          final book = readingBooks[index];
+          return GestureDetector(
+            onTap: () {
+              libraryVm.setCurrentBook(book);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BookDetailPage()),
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                book.imageUrl,
+                width: 130,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 130,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.book, size: 40),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

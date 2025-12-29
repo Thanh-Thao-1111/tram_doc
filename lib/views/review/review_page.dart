@@ -56,16 +56,12 @@ class _ReviewPageState extends State<ReviewPage> {
         elevation: 0,
         backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: Row(
-          children: const [
-            Text("Ôn tập ghi nhớ",
-                style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22)),
-          ],
-        ),
+        centerTitle: true,
+        title: const Text("Ôn tập ghi nhớ",
+            style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 22)),
       ),
       // 3. Bọc body bằng ListenableBuilder để cập nhật số liệu
       body: ListenableBuilder(
