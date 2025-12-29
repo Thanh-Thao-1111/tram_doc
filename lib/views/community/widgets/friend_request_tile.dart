@@ -5,6 +5,7 @@ class FriendRequestTile extends StatelessWidget {
   final String name;
   final String email;
   final String? avatarAsset;
+  final String? avatarUrl; // Network image URL
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -13,6 +14,7 @@ class FriendRequestTile extends StatelessWidget {
     required this.name,
     required this.email,
     this.avatarAsset,
+    this.avatarUrl,
     required this.onAccept,
     required this.onReject,
   });
@@ -26,8 +28,8 @@ class FriendRequestTile extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: CircleAvatar(
           backgroundColor: const Color(0xFFE5E7EB),
-          backgroundImage: avatarAsset == null ? null : AssetImage(avatarAsset!),
-          child: avatarAsset == null ? const Icon(Icons.person, color: Colors.white) : null,
+          backgroundImage: _getAvatarImage(),
+          child: _shouldShowDefaultAvatar() ? const Icon(Icons.person, color: Colors.white) : null,
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w900)),
         subtitle: Text(email, style: const TextStyle(fontSize: 12, color: CommunityTokens.subText)),
@@ -51,6 +53,14 @@ class FriendRequestTile extends StatelessWidget {
       ),
     );
   }
+
+  ImageProvider? _getAvatarImage() {
+    if (avatarUrl != null) return NetworkImage(avatarUrl!);
+    if (avatarAsset != null) return AssetImage(avatarAsset!);
+    return null;
+  }
+
+  bool _shouldShowDefaultAvatar() => avatarUrl == null && avatarAsset == null;
 }
 
 class _CircleBtn extends StatelessWidget {

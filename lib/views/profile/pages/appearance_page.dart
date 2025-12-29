@@ -10,9 +10,11 @@ class AppearancePage extends StatefulWidget {
 }
 
 class _AppearancePageState extends State<AppearancePage> {
+  // Local state for UI demonstration
   int mode = 0; // 0: Sáng, 1: Tối, 2: Hệ thống
   int colorIndex = 0;
   double fontSize = 16;
+  bool _isSaving = false;
 
   final colors = const [
     Color(0xFF38A169),
@@ -24,6 +26,29 @@ class _AppearancePageState extends State<AppearancePage> {
   ];
 
   final colorNames = const ['Xanh lá', 'Xanh dương', 'Tím', 'Hồng', 'Cam', 'Đỏ'];
+
+   Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+    
+    // Simulate saving delay
+    await Future.delayed(const Duration(milliseconds: 800));
+    
+    if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã lưu cài đặt giao diện (Demo)!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  String get _fontSizeLabel {
+    if (fontSize <= 14) return 'Nhỏ';
+    if (fontSize <= 17) return 'Vừa';
+    return 'Lớn';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,14 +94,40 @@ class _AppearancePageState extends State<AppearancePage> {
                   decoration: BoxDecoration(
                     color: ProfileTokens.card,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: selected ? ProfileTokens.text : ProfileTokens.divider, width: selected ? 1.5 : 1),
+                    border: Border.all(
+                      color: selected ? colors[i] : ProfileTokens.divider,
+                      width: selected ? 2 : 1,
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(width: 18, height: 18, decoration: BoxDecoration(color: colors[i], shape: BoxShape.circle)),
-                      const SizedBox(height: 10),
-                      Text(colorNames[i], style: const TextStyle(fontSize: 12, color: ProfileTokens.subText)),
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: colors[i],
+                          shape: BoxShape.circle,
+                          border: selected
+                              ? Border.all(color: Colors.white, width: 3)
+                              : null,
+                          boxShadow: selected
+                              ? [BoxShadow(color: colors[i].withOpacity(0.4), blurRadius: 8)]
+                              : null,
+                        ),
+                        child: selected
+                            ? const Icon(Icons.check, color: Colors.white, size: 14)
+                            : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        colorNames[i],
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: selected ? colors[i] : ProfileTokens.subText,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -91,12 +142,12 @@ class _AppearancePageState extends State<AppearancePage> {
             child: Column(
               children: [
                 Row(
-                  children: const [
-                    Text('T', style: TextStyle(color: ProfileTokens.subText)),
-                    Spacer(),
-                    Text('Vừa', style: TextStyle(fontWeight: FontWeight.w800)),
-                    Spacer(),
-                    Text('T', style: TextStyle(color: ProfileTokens.subText, fontSize: 18)),
+                  children: [
+                    const Text('A', style: TextStyle(color: ProfileTokens.subText, fontSize: 12)),
+                    const Spacer(),
+                    Text(_fontSizeLabel, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    const Spacer(),
+                    const Text('A', style: TextStyle(color: ProfileTokens.subText, fontSize: 20)),
                   ],
                 ),
                 Slider(
@@ -104,26 +155,43 @@ class _AppearancePageState extends State<AppearancePage> {
                   min: 12,
                   max: 22,
                   divisions: 10,
-                  activeColor: ProfileTokens.primary,
+                  activeColor: colors[colorIndex],
                   onChanged: (v) => setState(() => fontSize = v),
                 ),
-                Text('${fontSize.toStringAsFixed(0)}px', style: const TextStyle(color: ProfileTokens.subText, fontSize: 12)),
+                // Preview
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: ProfileTokens.bg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Đây là xem trước kích thước chữ ${fontSize.toStringAsFixed(0)}px',
+                    style: TextStyle(fontSize: fontSize),
+                  ),
+                ),
               ],
             ),
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           SizedBox(
             height: 48,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: ProfileTokens.primary,
+                backgroundColor: colors[colorIndex],
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
-              onPressed: () {},
-              child: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.w900)),
+              onPressed: _isSaving ? null : _saveSettings,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
         ],

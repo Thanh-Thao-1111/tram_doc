@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../widgets/profile_tokens.dart';
 import '../widgets/section_title.dart';
 import '../../../viewmodels/profile_viewmodel.dart';
+import '../../../models/user_profile.dart';
+import '../../../services/profile_service.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -11,9 +13,71 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  String name = 'Alex Nguyen';
-  String email = 'alex.nguyen@example.com';
-  String dob = '15/06/1995';
+  final ProfileService _profileService = ProfileService();
+  
+  bool _isLoading = true;
+  bool _isSaving = false;
+  UserProfile? _userProfile;
+  
+  String name = '';
+  String email = '';
+  String dob = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await _profileService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _isLoading = false;
+          
+          if (profile != null) {
+            name = profile.displayName ?? profile.effectiveDisplayName;
+            email = profile.email;
+            dob = profile.dateOfBirth ?? '';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải thông tin: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() => _isSaving = true);
+    try {
+      await _profileService.updateProfileFields({
+        'displayName': name,
+        'dateOfBirth': dob,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu thay đổi')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,79 +89,111 @@ class _AccountPageState extends State<AccountPage> {
         leading: const BackButton(color: ProfileTokens.text),
         title: const Text('Tài khoản', style: TextStyle(fontWeight: FontWeight.w900, color: ProfileTokens.text)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        children: [
-          const SectionTitle('Thông tin cá nhân'),
-          _ReadonlyField(
-            label: 'Họ và tên',
-            value: name,
-            icon: Icons.person_outline,
-            onTap: () => _showEditFieldDialog(context, 'Họ và tên', name, (v) => setState(() => name = v), validator: ProfileViewModel.validateDisplayName),
-          ),
-          _ReadonlyField(
-            label: 'Email',
-            value: email,
-            icon: Icons.email_outlined,
-            onTap: () => _showEditFieldDialog(context, 'Email', email, (v) => setState(() => email = v), validator: ProfileViewModel.validateEmail, keyboardType: TextInputType.emailAddress),
-          ),
-          _ReadonlyField(
-            label: 'Ngày sinh',
-            value: dob,
-            icon: Icons.calendar_month_outlined,
-            onTap: () => _showEditFieldDialog(context, 'Ngày sinh (dd/MM/yyyy)', dob, (v) => setState(() => dob = v), validator: ProfileViewModel.validateDob, keyboardType: TextInputType.datetime),
-          ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              children: [
+                const SectionTitle('Thông tin cá nhân'),
+                _ReadonlyField(
+                  label: 'Họ và tên',
+                  value: name,
+                  icon: Icons.person_outline,
+                  onTap: () => _showEditFieldDialog(
+                    context,
+                    'Họ và tên',
+                    name,
+                    (v) => setState(() => name = v),
+                    validator: ProfileViewModel.validateDisplayName,
+                  ),
+                ),
+                _ReadonlyField(
+                  label: 'Email',
+                  value: email,
+                  icon: Icons.email_outlined,
+                  // Email is read-only for now
+                  valueColor: ProfileTokens.subText,
+                ),
+                _ReadonlyField(
+                  label: 'Ngày sinh',
+                  value: dob.isEmpty ? 'Chưa cập nhật' : dob,
+                  icon: Icons.calendar_month_outlined,
+                  onTap: () => _showEditFieldDialog(
+                    context,
+                    'Ngày sinh (dd/MM/yyyy)',
+                    dob,
+                    (v) => setState(() => dob = v),
+                    validator: ProfileViewModel.validateDob,
+                    keyboardType: TextInputType.datetime,
+                  ),
+                ),
 
-          const SectionTitle('Bảo mật'),
-          _ActionCard(
-            title: 'Đổi mật khẩu',
-            subtitle: 'Cập nhật mật khẩu của bạn',
-            onTap: () => _showChangePasswordDialog(context),
-          ),
-          _ActionCard(
-            title: 'Xác thực hai yếu tố',
-            subtitle: 'Tăng cường bảo mật tài khoản',
-            onTap: () {},
-          ),
+                const SectionTitle('Bảo mật'),
+                _ActionCard(
+                  title: 'Đổi mật khẩu',
+                  subtitle: 'Cập nhật mật khẩu của bạn',
+                  onTap: () => _showChangePasswordDialog(context),
+                ),
+                _ActionCard(
+                  title: 'Xác thực hai yếu tố',
+                  subtitle: 'Tăng cường bảo mật tài khoản',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tính năng đang phát triển')),
+                    );
+                  },
+                ),
 
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () {},
-            child: const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Xóa tài khoản', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => _showDeleteAccountDialog(context),
+                  child: const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Xóa tài khoản', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ProfileTokens.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    onPressed: _isSaving ? null : _saveChanges,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
             ),
-          ),
-
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ProfileTokens.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-              ),
-              onPressed: () {},
-              child: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Future<void> _showEditFieldDialog(BuildContext context, String label, String initialValue, ValueChanged<String> onSave,
-      {String? Function(String?)? validator, TextInputType keyboardType = TextInputType.text}) async {
-    final _formKey = GlobalKey<FormState>();
+  Future<void> _showEditFieldDialog(
+    BuildContext context,
+    String label,
+    String initialValue,
+    ValueChanged<String> onSave, {
+    String? Function(String?)? validator,
+    TextInputType keyboardType = TextInputType.text,
+  }) async {
+    final formKey = GlobalKey<FormState>();
     String value = initialValue;
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(label),
         content: Form(
-          key: _formKey,
+          key: formKey,
           child: TextFormField(
             initialValue: initialValue,
             keyboardType: keyboardType,
@@ -110,7 +206,7 @@ class _AccountPageState extends State<AccountPage> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Hủy')),
           ElevatedButton(
             onPressed: () {
-              if (_formKey.currentState?.validate() ?? true) {
+              if (formKey.currentState?.validate() ?? true) {
                 onSave(value);
                 Navigator.of(ctx).pop();
               }
@@ -123,55 +219,153 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _showChangePasswordDialog(BuildContext context) async {
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
     String current = '';
     String next = '';
-    String confirm = '';
+    bool isLoading = false;
 
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Đổi mật khẩu'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
-                validator: ProfileViewModel.validateCurrentPassword,
-                onChanged: (v) => current = v,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
-                validator: ProfileViewModel.validatePassword,
-                onChanged: (v) => next = v,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
-                validator: (v) => ProfileViewModel.validateConfirmPassword(v, next),
-                onChanged: (v) => confirm = v,
-              ),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Đổi mật khẩu'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+                  validator: ProfileViewModel.validateCurrentPassword,
+                  onChanged: (v) => current = v,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+                  validator: ProfileViewModel.validatePassword,
+                  onChanged: (v) => next = v,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
+                  validator: (v) => ProfileViewModel.validateConfirmPassword(v, next),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() ?? false) {
+                        setDialogState(() => isLoading = true);
+                        try {
+                          await _profileService.changePassword(
+                            currentPassword: current,
+                            newPassword: next,
+                          );
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Mật khẩu đã được cập nhật')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$e')),
+                          );
+                        } finally {
+                          setDialogState(() => isLoading = false);
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Lưu'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Hủy')),
-          ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState?.validate() ?? false) {
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mật khẩu đã được cập nhật')));
-              }
-            },
-            child: const Text('Lưu'),
+      ),
+    );
+  }
+
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final formKey = GlobalKey<FormState>();
+    String password = '';
+    bool isLoading = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Xóa tài khoản'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.',
+                  style: TextStyle(color: Color(0xFFEF4444)),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Nhập mật khẩu để xác nhận'),
+                  validator: ProfileViewModel.validateCurrentPassword,
+                  onChanged: (v) => password = v,
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() ?? false) {
+                        setDialogState(() => isLoading = true);
+                        try {
+                          await _profileService.deleteAccount(password);
+                          Navigator.of(ctx).pop();
+                          // Navigate to login after deletion
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$e')),
+                          );
+                        } finally {
+                          setDialogState(() => isLoading = false);
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Xóa tài khoản', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -214,6 +408,7 @@ class _ReadonlyField extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null) const Icon(Icons.chevron_right, color: ProfileTokens.subText),
         ],
       ),
     );
@@ -242,6 +437,7 @@ class _ActionCard extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: ProfileTokens.subText)),
+        trailing: const Icon(Icons.chevron_right, color: ProfileTokens.subText),
       ),
     );
   }
