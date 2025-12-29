@@ -8,6 +8,7 @@ import '../../viewmodels/home_viewmodel.dart';
 import '../books/add_book_page.dart';
 import '../books/pages/add_bookshelf_page.dart';
 import 'pages/notification_page.dart';
+import '../review/pages/flashcard_player_page.dart';
 
 const Color primaryAppColor = Color(0xFF3BA66B);
 const Color accentGreenColor = Color(0xFF5CB85C);
@@ -25,10 +26,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _openAddToShelf(BuildContext context) {
+  void _openAddToShelf(BuildContext context, BookModel book) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddBookPreviewPage()),
+      MaterialPageRoute(builder: (_) => AddBookPreviewPage(book: book)),
     );
   }
 
@@ -52,7 +53,7 @@ class HomeScreen extends StatelessWidget {
               _header(context),
               _sectionTitle('Đang đọc'),
               _currentlyReading(),
-              _reviewSection(),
+              _reviewSection(context),
               _circleUpdates(),
               _suggestedBooks(context),
             ],
@@ -134,7 +135,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ================= REVIEW =================
-  Widget _reviewSection() {
+  Widget _reviewSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -173,7 +174,15 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Chuyển sang trang ôn tập ngẫu nhiên
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FlashcardPlayerPage(mode: "Ngẫu nhiên"),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentGreenColor,
                       foregroundColor: Colors.white,
@@ -201,7 +210,19 @@ class HomeScreen extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: vm.circleUpdates.map((u) {
+      children: [
+        // Tiêu đề
+        Text(
+          'Tin mới từ vòng tròn',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Danh sách tin
+        ...vm.circleUpdates.map((u) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
@@ -268,7 +289,8 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         );
-      }).toList(),
+      }),
+      ],
     ),
   );
 }
@@ -339,7 +361,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () => _openAddToShelf(context),
+                    onPressed: () => _openAddToShelf(context, b),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentGreenColor,
                       foregroundColor: Colors.white,

@@ -27,23 +27,28 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Trạm Đọc',
-      debugShowCheckedModeBanner: false,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => LibraryViewModel()),
+      ],
+      child: MaterialApp(
+        title: 'Trạm Đọc',
+        debugShowCheckedModeBanner: false,
 
-      theme: ThemeData(
-        primaryColor: primaryGreen,
-        scaffoldBackgroundColor: Colors.white,
-        fontFamily: GoogleFonts.inter().fontFamily,
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          iconTheme: IconThemeData(color: Colors.black),
+        theme: ThemeData(
+          primaryColor: primaryGreen,
+          scaffoldBackgroundColor: Colors.white,
+          fontFamily: GoogleFonts.inter().fontFamily,
+          appBarTheme: const AppBarTheme(
+            elevation: 0,
+            backgroundColor: Colors.white,
+            iconTheme: IconThemeData(color: Colors.black),
+          ),
         ),
-      ),
 
-      /// MÀN HÌNH KHỞI ĐẦU
-      home: WelcomeScreen(),
+        /// MÀN HÌNH KHỞI ĐẦU
+        home: WelcomeScreen(),
+      ),
     );
   }
 }

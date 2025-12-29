@@ -16,6 +16,7 @@ class CommunityPage extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0.5,
+          automaticallyImplyLeading: false,
           title: const Text('Cộng đồng', style: TextStyle(fontWeight: FontWeight.w900, color: CommunityTokens.text)),
           bottom: const TabBar(
             indicatorColor: CommunityTokens.primary,

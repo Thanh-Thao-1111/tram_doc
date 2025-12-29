@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart'; 
 import '../../../viewmodels/library_viewmodel.dart';
+import '../../../models/book_model.dart';
 import '../widgets/note_item.dart';
 import '../widgets/rating_star.dart';
-import 'add_note_page.dart';
-import 'review_book_page.dart';
+import '../../books/pages/book_address_page.dart';
+import '../../../repositories/book_repository.dart';
 
 class BookDetailPage extends StatefulWidget {
   const BookDetailPage({super.key});
@@ -15,20 +16,37 @@ class BookDetailPage extends StatefulWidget {
 }
 
 class _BookDetailPageState extends State<BookDetailPage> {
+  final BookRepository _bookRepository = BookRepository();
+  bool _isDeleting = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final vm = context.read<LibraryViewModel>();
-      vm.fetchNotes();
-      vm.fetchReviews();
-    });
+  // Helper method to get status icon
+  IconData _getStatusIcon(ReadingStatus status) {
+    switch (status) {
+      case ReadingStatus.wantToRead:
+        return Icons.bookmark_border;
+      case ReadingStatus.reading:
+        return Icons.menu_book;
+      case ReadingStatus.completed:
+        return Icons.check_circle_outline;
+    }
+  }
+
+  // Helper method to get status text
+  String _getStatusText(ReadingStatus status) {
+    switch (status) {
+      case ReadingStatus.wantToRead:
+        return 'Muốn đọc';
+      case ReadingStatus.reading:
+        return 'Đang đọc';
+      case ReadingStatus.completed:
+        return 'Đã đọc';
+    }
   }
 
   void _showUpdateProgressDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
-    final viewModel = context.read<LibraryViewModel>(); 
+    final viewModel = context.read<LibraryViewModel>();
+    
     int current = viewModel.currentPage;
     int total = viewModel.totalPages;
     int newPage = current;
@@ -42,7 +60,11 @@ class _BookDetailPageState extends State<BookDetailPage> {
           child: TextFormField(
             initialValue: current.toString(),
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: "Số trang đang đọc", border: OutlineInputBorder(), suffixText: "trang"),
+            decoration: const InputDecoration(
+              labelText: "Số trang đang đọc",
+              border: OutlineInputBorder(),
+              suffixText: "trang",
+            ),
             validator: (value) => viewModel.validatePageNumber(value, maxPage: total),
             onSaved: (value) => newPage = int.tryParse(value ?? '0') ?? 0,
           ),
@@ -65,13 +87,78 @@ class _BookDetailPageState extends State<BookDetailPage> {
     );
   }
 
+  void _showDeleteConfirmation(BuildContext context) {
+    final viewModel = context.read<LibraryViewModel>();
+    final book = viewModel.currentBook;
+
+    if (book == null || book.id == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Xóa sách"),
+        content: Text("Bạn có chắc muốn xóa '${book.title}' khỏi thư viện?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() => _isDeleting = true);
+              
+              try {
+                await viewModel.deleteBook(book.id!);
+                if (!mounted) return;
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Đã xóa sách khỏi thư viện!"),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                Navigator.pop(context);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Lỗi: $e"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                setState(() => _isDeleting = false);
+              }
+            },
+            child: const Text("Xóa", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          )
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<LibraryViewModel>();
     final book = viewModel.currentBook;
     const Color primaryColor = Color(0xFF4CAF50);
 
-    if (book == null) return const Scaffold(body: Center(child: Text("Lỗi: Không tìm thấy sách")));
+    final viewModel = context.watch<LibraryViewModel>();
+    final book = viewModel.currentBook;
+
+    if (book == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: const Center(child: Text("Không tìm thấy sách")),
+      );
+    }
 
     return DefaultTabController(
       length: 3,
@@ -86,6 +173,19 @@ class _BookDetailPageState extends State<BookDetailPage> {
           ),
           title: const Text('Chi tiết Sách', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           centerTitle: true,
+          actions: [
+            // Delete button
+            IconButton(
+              icon: _isDeleting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete, color: Colors.red),
+              onPressed: _isDeleting ? null : () => _showDeleteConfirmation(context),
+            ),
+          ],
         ),
         body: Column(
           children: [
@@ -98,10 +198,29 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     width: 80, height: 120,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: NetworkImage(book.imageUrl.isNotEmpty ? book.imageUrl : 'https://via.placeholder.com/150'),
-                        fit: BoxFit.cover
-                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: book.imageUrl.isNotEmpty
+                          ? Image.network(
+                              book.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.book, color: Colors.grey, size: 40),
+                              ),
+                            )
+                          : Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.book, color: Colors.grey, size: 40),
+                            ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -109,8 +228,49 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(book.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text(book.author, style: const TextStyle(color: Colors.grey)),
+                        Text(book.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(book.author, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+                        const SizedBox(height: 12),
+                        // Reading status
+                        Row(
+                          children: [
+                            Icon(
+                              _getStatusIcon(book.readingStatus),
+                              size: 16,
+                              color: primaryColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _getStatusText(book.readingStatus),
+                              style: const TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        // Shelf location - clickable
+                        GestureDetector(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const BookLocationPage()),
+                            );
+                            // Refresh to show updated location
+                            setState(() {});
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 16, color: primaryColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                book.shelfLocation?.isNotEmpty == true 
+                                    ? book.shelfLocation! 
+                                    : 'Vị trí sách',
+                                style: const TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -133,9 +293,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
             Expanded(
               child: TabBarView(
                 children: [
-                  _buildWantToReadTab(context, viewModel, primaryColor), // Tab 1
-                  _buildNotesTab(context, viewModel),
-                  _buildCommunityTab(context, viewModel),
+                  _buildInfoTab(context, viewModel, primaryColor),
+                  _buildNotesTab(context),
+                  _buildCommunityTab(context),
                 ],
               ),
             ),
@@ -145,9 +305,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
     );
   }
 
-  // 🔥 TAB 1: MUỐN ĐỌC (Tên cũ là _buildInfoTab)
-  Widget _buildWantToReadTab(BuildContext context, LibraryViewModel viewModel, Color primaryColor) {
-    final book = viewModel.currentBook!;
+  // --- TAB 1: THÔNG TIN ---
+  Widget _buildInfoTab(BuildContext context, LibraryViewModel viewModel, Color primaryColor) {
+    final book = viewModel.currentBook;
     int current = viewModel.currentPage;
     int total = viewModel.totalPages;
     double progress = (total == 0) ? 0 : (current / total);
@@ -158,13 +318,29 @@ class _BookDetailPageState extends State<BookDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Giới thiệu
-          const Text("Giới thiệu", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          if (book?.description != null) ...[
+            Text(
+              book!.description!,
+              style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+              maxLines: 6,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 24),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Đã đọc ${(progress * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+              Text("Trang $current / $total", style: const TextStyle(color: Colors.grey)),
+            ],
+          ),
           const SizedBox(height: 8),
-          Text(
-            "Cuốn sách '${book.title}' của ${book.author}. $total trang. Hãy thêm vào danh sách 'Muốn đọc' để bắt đầu nhé!",
-            style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
-            textAlign: TextAlign.justify,
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey[200],
+            color: primaryColor,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
           ),
           
           const SizedBox(height: 24),
@@ -240,25 +416,99 @@ class _BookDetailPageState extends State<BookDetailPage> {
             ),
           ),
         ),
-        Expanded(child: notes.isEmpty ? const Center(child: Text("Chưa có ghi chú", style: TextStyle(color: Colors.grey))) : ListView.separated(padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: notes.length, separatorBuilder: (_, __) => const SizedBox(height: 12), itemBuilder: (context, index) { final note = notes[index]; return NoteItem(page: "Trang ${note.pageNumber}", date: DateFormat('dd/MM/yyyy').format(note.date), content: note.content, onTap: () {}); })),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: 4,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return NoteItem(
+                page: "Trang ${25 * (index + 1)}",
+                date: "2${index} tháng 10, 2025",
+                content: "Đây là nội dung ghi chú số ${index + 1}. Một bài học quan trọng về cách quản lý tài chính cá nhân mà tôi rút ra được...",
+                onTap: () {},
+              );
+            },
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildCommunityTab(BuildContext context, LibraryViewModel viewModel) {
-    final reviews = viewModel.reviews;
-    return Column(
+  // --- TAB 3: CỘNG ĐỒNG ---
+  Widget _buildCommunityTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReviewBookPage())), icon: const Icon(Icons.rate_review, color: Color(0xFF4CAF50)), label: const Text("Viết đánh giá", style: TextStyle(color: Color(0xFF4CAF50))))),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text("4.8", style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.black)),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const RatingStar(rating: 5, size: 20),
+                const SizedBox(height: 4),
+                const Text("1,234 đánh giá", style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          ],
         ),
-        Expanded(child: reviews.isEmpty ? const Center(child: Text("Chưa có đánh giá", style: TextStyle(color: Colors.grey))) : ListView.builder(padding: const EdgeInsets.all(16), itemCount: reviews.length, itemBuilder: (context, index) { final review = reviews[index]; return _buildReviewItem(review.userName, review.rating, review.comment); })),
+        
+        const SizedBox(height: 16),
+        
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ReviewBookPage()),
+              );
+            },
+            icon: const Icon(Icons.rate_review, color: Color(0xFF4CAF50)),
+            label: const Text("Viết đánh giá", style: TextStyle(color: Color(0xFF4CAF50))),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF4CAF50)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const Divider(height: 32),
+        
+        _buildReviewItem("Minh Hưng", 5, "Cuốn sách tuyệt vời về hành trình theo đuổi ước mơ."),
+        _buildReviewItem("Lan Anh", 4, "Nội dung hay nhưng bản dịch đôi chỗ hơi khó hiểu."),
+        _buildReviewItem("Quốc Tuấn", 5, "Ngôn ngữ giản dị nhưng sâu sắc. Rất đáng đọc!"),
       ],
     );
   }
 
   Widget _buildReviewItem(String name, int rating, String comment) {
-    return Padding(padding: const EdgeInsets.only(bottom: 16.0), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [CircleAvatar(backgroundColor: Colors.grey[200], child: Text(name[0])), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(fontWeight: FontWeight.bold)), RatingStar(rating: rating, size: 14), Text(comment)]))]));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.grey[200],
+            child: Text(name[0], style: const TextStyle(color: Colors.black87)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 2),
+                RatingStar(rating: rating, size: 14),
+                const SizedBox(height: 6),
+                Text(comment, style: const TextStyle(color: Colors.black87, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -1,180 +1,139 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/book_model.dart';
-import '../models/note_model.dart';
-import '../models/review_model.dart';
 
 class BookRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // 1. Lấy sách từ Firebase 
-  Future<List<BookModel>> getLibraryBooks() async {
+  /// Collection reference
+  CollectionReference get _booksCollection => _firestore.collection('books');
+
+  /// Get current user ID
+  String? get _currentUserId => _auth.currentUser?.uid;
+
+  /// Add a new book to the user's library
+  Future<String> addBook(BookModel book) async {
+    if (_currentUserId == null) {
+      throw Exception('Bạn cần đăng nhập để thêm sách');
+    }
+
     try {
-      final snapshot = await _firestore.collection('books').get();
-      return snapshot.docs.map((doc) {
-        return BookModel.fromFirestore(doc.data(), doc.id);
-      }).toList();
+      final bookWithUser = book.copyWith(userId: _currentUserId);
+      final docRef = await _booksCollection.add(bookWithUser.toFirestore());
+      return docRef.id;
     } catch (e) {
-      print("Lỗi lấy sách Firebase: $e");
-      return [];
+      throw Exception('Không thể thêm sách: $e');
     }
   }
 
-  // 2. Tìm sách từ Google Books (NÂNG CẤP XỬ LÝ ẢNH)
-  Future<List<BookModel>> searchBooks(String query) async {
-    if (query.isEmpty) return [];
-    
-    print("🚀 ĐANG GỌI GOOGLE API TÌM: $query"); 
-
-    final url = Uri.parse('https://www.googleapis.com/books/v1/volumes?q=$query');
+  /// Get all books for current user
+  Future<List<BookModel>> getBooks() async {
+    if (_currentUserId == null) {
+      return [];
+    }
 
     try {
-      final response = await http.get(url);
+      final querySnapshot = await _booksCollection
+          .where('userId', isEqualTo: _currentUserId)
+          .get();
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> items = data['items'] ?? [];
+      final books = querySnapshot.docs
+          .map((doc) => BookModel.fromFirestore(doc))
+          .toList();
+      
+      // Sort by createdAt on client side to avoid needing composite index
+      books.sort((a, b) => (b.createdAt ?? DateTime(1970)).compareTo(a.createdAt ?? DateTime(1970)));
+      return books;
+    } catch (e) {
+      throw Exception('Không thể tải danh sách sách: $e');
+    }
+  }
 
-        return items.map((item) {
-          final volumeInfo = item['volumeInfo'];
-          final imageLinks = volumeInfo['imageLinks'] ?? {};
+  /// Get books as a stream for real-time updates
+  Stream<List<BookModel>> getBooksStream() {
+    if (_currentUserId == null) {
+      return Stream.value([]);
+    }
 
-          // 🔥 LOGIC LẤY ẢNH MỚI: 
-          // 1. Ưu tiên lấy ảnh thumbnail, nếu không có thì lấy smallThumbnail
-          String rawImageUrl = imageLinks['thumbnail'] ?? imageLinks['smallThumbnail'] ?? '';
+    return _booksCollection
+        .where('userId', isEqualTo: _currentUserId)
+        .snapshots()
+        .map((snapshot) {
+          final books = snapshot.docs
+              .map((doc) => BookModel.fromFirestore(doc))
+              .toList();
+          // Sort by createdAt on client side
+          books.sort((a, b) => (b.createdAt ?? DateTime(1970)).compareTo(a.createdAt ?? DateTime(1970)));
+          return books;
+        });
+  }
 
-          // 2. Xử lý link ảnh
-          if (rawImageUrl.isNotEmpty) {
-            // Đổi http thành https
-            rawImageUrl = rawImageUrl.replaceFirst('http://', 'https://');
-            
-            // Xóa hiệu ứng "cong góc sách" (edge=curl) gây lỗi hiển thị
-            rawImageUrl = rawImageUrl.replaceAll('&edge=curl', '');
-            
-            // (Tùy chọn) Thử zoom=1 để ảnh rõ hơn nếu cần
-            // rawImageUrl = rawImageUrl.replaceAll('&zoom=1', '&zoom=2'); 
-          }
-
-          // In ra link ảnh để kiểm tra (Click vào link trong Console xem có ra ảnh không)
-          print("Link ảnh: $rawImageUrl");
-
-          return BookModel(
-            id: item['id'], 
-            title: volumeInfo['title'] ?? 'Không có tên',
-            author: (volumeInfo['authors'] as List<dynamic>?)?.first ?? 'Ẩn danh',
-            imageUrl: rawImageUrl, 
-            pageCount: volumeInfo['pageCount'] ?? 0,
-          );
-        }).toList();
-      } else {
-        return [];
+  /// Get a single book by ID
+  Future<BookModel?> getBookById(String id) async {
+    try {
+      final doc = await _booksCollection.doc(id).get();
+      if (doc.exists) {
+        return BookModel.fromFirestore(doc);
       }
+      return null;
     } catch (e) {
-      print("Lỗi tìm sách Google: $e");
-      return [];
+      throw Exception('Không thể tải thông tin sách: $e');
     }
   }
 
-  // --- 3. THÊM SÁCH VÀO THƯ VIỆN (MỚI) ---
-  Future<bool> addBookToLibrary(BookModel book) async {
-    try {
-      // Tạo dữ liệu để gửi lên Firebase
-      // 🔥 LƯU Ý: Tên trường (key) phải khớp y hệt database nhóm bạn
-      final data = {
-        'title': book.title,
-        'author': book.author,
-        'imageUrl': book.imageUrl,
-        'pageCount': book.pageCount, 
-        'source': 'google_books', 
-        'createdAt': FieldValue.serverTimestamp(),
-      };
+  /// Update an existing book
+  Future<void> updateBook(String id, BookModel book) async {
+    if (_currentUserId == null) {
+      throw Exception('Bạn cần đăng nhập để cập nhật sách');
+    }
 
-      await _firestore.collection('books').add(data);
-      print("Đã thêm sách '${book.title}' vào Firebase!");
-      return true; // Báo thành công
+    try {
+      final data = book.toFirestore();
+      data['updatedAt'] = FieldValue.serverTimestamp();
+      await _booksCollection.doc(id).update(data);
     } catch (e) {
-      print("Lỗi thêm sách: $e");
-      return false; // Báo thất bại
+      throw Exception('Không thể cập nhật sách: $e');
     }
   }
 
-  Future<void> updateBookProgress(String bookId, int newPage) async {
+  /// Update reading progress
+  Future<void> updateReadingProgress(String id, int currentPage) async {
     try {
-      await _firestore.collection('books').doc(bookId).update({
-        'currentPage': newPage,
+      await _booksCollection.doc(id).update({
+        'currentPage': currentPage,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print("Lỗi update progress: $e");
+      throw Exception('Không thể cập nhật tiến độ đọc: $e');
     }
   }
 
-  // --- PHẦN GHI CHÚ (Lưu trong sub-collection của sách) ---
-  
-  // 1. Lấy danh sách ghi chú
-  Future<List<NoteModel>> getNotes(String bookId) async {
+  /// Delete a book
+  Future<void> deleteBook(String id) async {
+    if (_currentUserId == null) {
+      throw Exception('Bạn cần đăng nhập để xóa sách');
+    }
+
     try {
-      final snapshot = await _firestore
-          .collection('books')
-          .doc(bookId)
-          .collection('notes')
-          .orderBy('date', descending: true)
+      await _booksCollection.doc(id).delete();
+    } catch (e) {
+      throw Exception('Không thể xóa sách: $e');
+    }
+  }
+
+  /// Check if book already exists in user's library (by ISBN)
+  Future<bool> bookExists(String isbn) async {
+    if (_currentUserId == null) return false;
+
+    try {
+      final querySnapshot = await _booksCollection
+          .where('userId', isEqualTo: _currentUserId)
+          .where('isbn', isEqualTo: isbn)
+          .limit(1)
           .get();
 
-      return snapshot.docs
-          .map((doc) => NoteModel.fromFirestore(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print("❌ Lỗi lấy ghi chú: $e");
-      return [];
-    }
-  }
-
-  // 2. Thêm ghi chú mới
-  Future<bool> addNote(String bookId, String content, int page) async {
-    try {
-      await _firestore.collection('books').doc(bookId).collection('notes').add({
-        'content': content,
-        'page': page,
-        'date': FieldValue.serverTimestamp(),
-      });
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // --- PHẦN CỘNG ĐỒNG (Lưu trong collection 'reviews' chung) ---
-
-  // 3. Lấy đánh giá của sách này (Dựa theo tên sách cho đơn giản)
-  Future<List<ReviewModel>> getReviews(String bookTitle) async {
-    try {
-      final snapshot = await _firestore
-          .collection('reviews')
-          .where('bookTitle', isEqualTo: bookTitle)
-          .limit(20)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => ReviewModel.fromFirestore(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print("❌ Lỗi lấy đánh giá: $e");
-      return [];
-    }
-  }
-
-  // 4. Thêm đánh giá
-  Future<bool> addReview(String bookTitle, String comment, int rating) async {
-    try {
-      await _firestore.collection('reviews').add({
-        'bookTitle': bookTitle,
-        'userName': 'Tôi', // Tạm thời để cứng, sau này lấy từ User Auth
-        'rating': rating,
-        'comment': comment,
-        'date': FieldValue.serverTimestamp(),
-      });
-      return true;
+      return querySnapshot.docs.isNotEmpty;
     } catch (e) {
       return false;
     }

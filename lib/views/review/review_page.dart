@@ -18,6 +18,7 @@ class ReviewPage extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
         titleSpacing: 16,
         title: Row(
           children: const [

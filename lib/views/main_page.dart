@@ -33,7 +33,7 @@ class _MainPageState extends State<MainPage> {
   void _openAddBookShelf() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AddBookPreviewPage()),
+      MaterialPageRoute(builder: (_) => const AddBookPage()),
     );
   }
 
