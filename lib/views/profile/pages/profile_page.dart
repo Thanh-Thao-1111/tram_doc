@@ -28,6 +28,7 @@ class ProfilePage extends StatelessWidget {
         backgroundColor: ProfileTokens.bg,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Hồ sơ cá nhân',
           style: TextStyle(fontWeight: FontWeight.w900, color: ProfileTokens.text),

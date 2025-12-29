@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
-class AuthService {
+class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   /// Get current user
   User? get currentUser => _auth.currentUser;
@@ -101,8 +103,55 @@ class AuthService {
     }
   }
 
+  /// Sign in with Google
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        return null;
+      }
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      final userCredential = await _auth.signInWithCredential(credential);
+
+      // Save user info to Firestore if new user
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        final user = userCredential.user!;
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email?.toLowerCase(),
+          'username': user.displayName?.toLowerCase().replaceAll(' ', '_') ??
+              user.email?.split('@').first.toLowerCase(),
+          'displayName': user.displayName,
+          'photoURL': user.photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'provider': 'google',
+        });
+      }
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw 'Đăng nhập Google thất bại: $e';
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
+    await _googleSignIn.signOut();
     await _auth.signOut();
   }
 

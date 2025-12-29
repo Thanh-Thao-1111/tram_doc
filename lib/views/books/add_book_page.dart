@@ -21,13 +21,19 @@ class AddBookPage extends StatelessWidget {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                'Hủy',
-                style: TextStyle(color: Colors.green, fontSize: 16),
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: () {
+                // Quay về trang thư viện (MainPage)
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Center(
+                child: Text(
+                  'Hủy',
+                  style: TextStyle(color: Colors.green, fontSize: 16),
+                ),
               ),
             ),
           )
