@@ -42,13 +42,13 @@ class LibraryViewModel extends ChangeNotifier {
   List<ReviewModel> get reviews => _reviews;
 
   List<BookModel> get readingBooks {
-    final list = _libraryBooks.where((b) => b.currentPage > 0 && b.currentPage < b.pageCount).toList();
+    final list = _libraryBooks.where((b) => b.currentPage > 0 && b.currentPage < (b.pageCount ?? 0)).toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
 
   List<BookModel> get finishedBooks {
-    final list = _libraryBooks.where((b) => b.pageCount > 0 && b.currentPage >= b.pageCount).toList();
+    final list = _libraryBooks.where((b) => (b.pageCount ?? 0) > 0 && b.currentPage >= (b.pageCount ?? 0)).toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
@@ -90,7 +90,7 @@ class LibraryViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _libraryBooks = await _bookRepo.getLibraryBooks(); // Repo cũ
+      _libraryBooks = await _bookRepo.getBooks();
     } catch (e) {
       print("Lỗi fetchBooks: $e");
     }
@@ -107,7 +107,11 @@ class LibraryViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _searchedBooks = await _bookRepo.searchBooks(query);
+      // Filter locally since BookRepository doesn't have searchBooks
+      _searchedBooks = _libraryBooks.where((b) =>
+        b.title.toLowerCase().contains(query.toLowerCase()) ||
+        b.author.toLowerCase().contains(query.toLowerCase())
+      ).toList();
     } catch (e) {
       _searchedBooks = [];
     }
@@ -118,14 +122,18 @@ class LibraryViewModel extends ChangeNotifier {
   Future<bool> addToLibrary(BookModel book) async {
     _isLoading = true;
     notifyListeners();
-    bool success = await _bookRepo.addBookToLibrary(book);
-    if (success) {
+    try {
+      await _bookRepo.addBook(book);
       await fetchBooks();
       stopSearching();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
-    _isLoading = false;
-    notifyListeners();
-    return success;
   }
 
   void setCurrentBook(BookModel book) {
@@ -137,11 +145,11 @@ class LibraryViewModel extends ChangeNotifier {
   }
 
   Future<void> updateReadingProgress(int newPage) async {
-    if (_currentBook != null) {
+    if (_currentBook != null && _currentBook!.id != null) {
       _currentPage = newPage;
       notifyListeners();
 
-      await _bookRepo.updateBookProgress(_currentBook!.id, newPage);
+      await _bookRepo.updateReadingProgress(_currentBook!.id!, newPage);
 
       final index = _libraryBooks.indexWhere((b) => b.id == _currentBook!.id);
       if (index != -1) {
@@ -154,29 +162,63 @@ class LibraryViewModel extends ChangeNotifier {
     }
   }
 
+  // Delete a book from library
+  Future<void> deleteBook(String bookId) async {
+    await _bookRepo.deleteBook(bookId);
+    _libraryBooks.removeWhere((b) => b.id == bookId);
+    if (_currentBook?.id == bookId) {
+      _currentBook = null;
+    }
+    notifyListeners();
+  }
+
+  // Update book details
+  Future<void> updateBook(String bookId, BookModel book) async {
+    await _bookRepo.updateBook(bookId, book);
+    final index = _libraryBooks.indexWhere((b) => b.id == bookId);
+    if (index != -1) {
+      _libraryBooks[index] = book.copyWith(id: bookId);
+    }
+    if (_currentBook?.id == bookId) {
+      _currentBook = book.copyWith(id: bookId);
+    }
+    notifyListeners();
+  }
+
   // ====================== NOTES & REVIEWS ======================
+  // Note: Notes and Reviews are stored locally for now (stub implementation)
   Future<void> fetchNotes() async {
     if (_currentBook == null) return;
-    _notes = await _bookRepo.getNotes(_currentBook!.id);
+    // TODO: Implement notes storage in Firestore
+    _notes = [];
     notifyListeners();
   }
 
   Future<void> addUserNote(String content, int page) async {
     if (_currentBook == null) return;
-    bool success = await _bookRepo.addNote(_currentBook!.id, content, page);
-    if (success) await fetchNotes();
+    // TODO: Implement notes storage in Firestore
+    notifyListeners();
   }
 
   Future<void> fetchReviews() async {
     if (_currentBook == null) return;
-    _reviews = await _bookRepo.getReviews(_currentBook!.title);
+    // TODO: Implement reviews storage in Firestore
+    _reviews = [];
     notifyListeners();
   }
 
   Future<void> addUserReview(String comment, int rating) async {
     if (_currentBook == null) return;
-    bool success = await _bookRepo.addReview(_currentBook!.title, comment, rating);
-    if (success) await fetchReviews();
+    // TODO: Implement reviews storage in Firestore
+    notifyListeners();
+  }
+
+  // ====================== FLASHCARDS ======================
+  // TODO: Implement flashcards storage in Firestore
+  void createFlashcard(String question, String answer) {
+    // Stub implementation - flashcards functionality to be implemented
+    print('Creating flashcard: Q: $question, A: $answer');
+    notifyListeners();
   }
 
   // ====================== VALIDATORS ======================

@@ -7,6 +7,8 @@ import '../widgets/note_item.dart';
 import '../widgets/rating_star.dart';
 import '../../books/pages/book_address_page.dart';
 import '../../../repositories/book_repository.dart';
+import 'add_note_page.dart';
+import 'review_book_page.dart';
 
 class BookDetailPage extends StatefulWidget {
   const BookDetailPage({super.key});
@@ -142,9 +144,6 @@ class _BookDetailPageState extends State<BookDetailPage> {
     final viewModel = context.watch<LibraryViewModel>();
     final book = viewModel.currentBook;
     const Color primaryColor = Color(0xFF4CAF50);
-
-    final viewModel = context.watch<LibraryViewModel>();
-    final book = viewModel.currentBook;
 
     if (book == null) {
       return Scaffold(
@@ -294,7 +293,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
               child: TabBarView(
                 children: [
                   _buildInfoTab(context, viewModel, primaryColor),
-                  _buildNotesTab(context),
+                  _buildNotesTab(context, viewModel),
                   _buildCommunityTab(context),
                 ],
               ),
@@ -358,7 +357,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   onPressed: viewModel.isLoading 
                     ? null 
                     : () async {
-                        await viewModel.addToLibrary(book);
+                        if (book != null) await viewModel.addToLibrary(book);
                         if (mounted) Navigator.pop(context);
                       },
                   icon: const Icon(Icons.bookmark_add, color: Colors.white),
@@ -409,7 +408,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddNotePage())),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => AddNotePage())),
               icon: const Icon(Icons.edit_note),
               label: const Text("Viết ghi chú mới"),
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
@@ -464,7 +463,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ReviewBookPage()),
+                MaterialPageRoute(builder: (context) => ReviewBookPage()),
               );
             },
             icon: const Icon(Icons.rate_review, color: Color(0xFF4CAF50)),
