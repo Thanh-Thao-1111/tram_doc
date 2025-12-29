@@ -326,27 +326,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
             ),
             const SizedBox(height: 24),
           ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Đã đọc ${(progress * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-              Text("Trang $current / $total", style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.grey[200],
-            color: primaryColor,
-            minHeight: 8,
-            borderRadius: BorderRadius.circular(4),
-          ),
           
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-
-          // 2. Nút Bấm
           if (viewModel.isSearching) ...[
             // Đang tìm kiếm -> Nút "Muốn đọc" (để thêm vào tủ)
             Center(
@@ -361,14 +341,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         if (mounted) Navigator.pop(context);
                       },
                   icon: const Icon(Icons.bookmark_add, color: Colors.white),
-                  // 🔥 SỬA: Tên nút thành "Muốn đọc"
                   label: const Text("Muốn đọc", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                 ),
               ),
             ),
           ] else ...[
-            // Đã có trong tủ -> Hiện tiến độ
+            // Đã có trong tủ -> Hiện tiến độ (1 dòng duy nhất)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -376,7 +355,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 Text("$current / $total trang", style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(value: progress, backgroundColor: Colors.grey[200], color: primaryColor, minHeight: 10),

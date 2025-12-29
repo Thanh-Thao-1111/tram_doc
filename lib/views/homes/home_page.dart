@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tram_doc/core/assets/app_images.dart';
 
 import '../../models/book_model.dart';
@@ -14,10 +16,61 @@ const Color primaryAppColor = Color(0xFF3BA66B);
 const Color accentGreenColor = Color(0xFF5CB85C);
 const Color descriptionBlueColor = Color(0xFF336699);
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   final HomeViewModel vm = HomeViewModel();
+  String _username = '';
+  String _greeting = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+    _updateGreeting();
+  }
+
+  void _updateGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      _greeting = 'Chào buổi sáng';
+    } else if (hour < 18) {
+      _greeting = 'Chào buổi chiều';
+    } else {
+      _greeting = 'Chào buổi tối';
+    }
+  }
+
+  Future<void> _loadUserInfo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Try to get username from Firestore
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (doc.exists && doc.data()?['username'] != null) {
+          setState(() {
+            _username = doc.data()!['username'];
+          });
+          return;
+        }
+      } catch (e) {
+        // Firestore failed, use displayName or email
+      }
+      
+      // Fallback to displayName or email
+      setState(() {
+        _username = user.displayName ?? user.email?.split('@').first ?? 'Bạn';
+      });
+    }
+  }
 
   void _openAddBook(BuildContext context) {
     Navigator.push(
@@ -45,19 +98,27 @@ class HomeScreen extends StatelessWidget {
     return Material(
       color: Colors.white,
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context),
-              _sectionTitle('Đang đọc'),
-              _currentlyReading(),
-              _reviewSection(context),
-              _circleUpdates(),
-              _suggestedBooks(context),
-            ],
-          ),
+        child: Column(
+          children: [
+            // Fixed header at top
+            _header(context),
+            // Scrollable content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionTitle('Đang đọc'),
+                    _currentlyReading(),
+                    _reviewSection(context),
+                    _circleUpdates(),
+                    _suggestedBooks(context),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -65,7 +126,17 @@ class HomeScreen extends StatelessWidget {
 
   // ================= HEADER =================
   Widget _header(BuildContext context) {
-    return Padding(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
@@ -76,7 +147,9 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Chào buổi sáng, Nam!',
+              _username.isNotEmpty 
+                  ? '$_greeting, $_username!' 
+                  : '$_greeting!',
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
