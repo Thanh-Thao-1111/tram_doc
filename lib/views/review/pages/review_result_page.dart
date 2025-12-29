@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 
 class ReviewResultPage extends StatelessWidget {
-  // 1. Thêm các biến để nhận kết quả (đặt giá trị mặc định để test UI)
   final int easyCount;
   final int goodCount;
   final int hardCount;
 
+  // Xóa const mặc định để bắt buộc truyền dữ liệu từ PlayerViewModel
   const ReviewResultPage({
     super.key,
-    this.easyCount = 5,   // Mặc định giả lập = 5
-    this.goodCount = 12,  // Mặc định giả lập = 12
-    this.hardCount = 3,   // Mặc định giả lập = 3
+    required this.easyCount,
+    required this.goodCount,
+    required this.hardCount,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Tổng số thẻ đã ôn
+    int totalReviewed = easyCount + goodCount + hardCount;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -25,7 +28,7 @@ class ReviewResultPage extends StatelessWidget {
             children: [
               const Spacer(),
               
-              // 2. Icon Chúc mừng
+              // Biểu tượng thành tích
               Container(
                 width: 120,
                 height: 120,
@@ -41,26 +44,25 @@ class ReviewResultPage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 3. Lời chúc
               const Text(
                 "Tuyệt vời!",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                "Bạn đã hoàn thành phiên ôn tập hôm nay.",
+              Text(
+                "Bạn đã hoàn thành phiên ôn tập với $totalReviewed thẻ.",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
 
               const SizedBox(height: 40),
 
-              // 4. Thống kê kết quả (Dùng dữ liệu từ biến class)
+              // Thống kê kết quả thực tế
               Row(
                 children: [
-                  _buildStatCard("Quên", hardCount.toString(), Colors.red),
+                  _buildStatCard("Khó", hardCount.toString(), Colors.red),
                   const SizedBox(width: 16),
-                  _buildStatCard("Nhớ", goodCount.toString(), Colors.blue),
+                  _buildStatCard("Tốt", goodCount.toString(), Colors.blue),
                   const SizedBox(width: 16),
                   _buildStatCard("Dễ", easyCount.toString(), Colors.green),
                 ],
@@ -68,39 +70,24 @@ class ReviewResultPage extends StatelessWidget {
 
               const Spacer(),
 
-              // 5. Nút điều hướng
+              // Nút điều hướng
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Pop về màn hình Menu (ReviewPage)
-                    Navigator.pop(context); 
-                  },
+                  onPressed: () => Navigator.pop(context), 
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
                   child: const Text(
-                    "Tiếp tục học", 
+                    "Hoàn thành", 
                     style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: TextButton(
-                  onPressed: () {
-                    // Quay về tận trang chủ (Home/MainPage) nếu cần
-                    // Navigator.of(context).popUntil((route) => route.isFirst);
-                    Navigator.pop(context);
-                  },
-                  child: const Text("Về trang chủ", style: TextStyle(color: Colors.grey, fontSize: 16)),
-                ),
-              ),
             ],
           ),
         ),
@@ -108,7 +95,6 @@ class ReviewResultPage extends StatelessWidget {
     );
   }
 
-  // Widget con hiển thị thẻ thống kê
   Widget _buildStatCard(String label, String count, Color color) {
     return Expanded(
       child: Container(

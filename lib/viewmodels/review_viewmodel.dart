@@ -1,14 +1,52 @@
 import 'package:flutter/material.dart';
+import '../models/card_model.dart';
+import '../models/book_model.dart'; 
+import '../repositories/card_repository.dart';
+import '../repositories/book_repository.dart'; 
 
 // ==========================================
 // CLASS 1: Menu Dashboard (ReviewPage)
 // ==========================================
 class ReviewDashboardViewModel extends ChangeNotifier {
-  int _cardsToReview = 5; // Giả lập có 5 bài
-  int _cardsMistake = 2;
+  final CardRepository _repository = CardRepository();
+
+  int _cardsToReview = 0; 
+  int _cardsMistake = 0;
+  bool _isLoading = true;
+  List<DateTime> _completedDates = []; // Lưu danh sách ngày đã học thật
 
   int get cardsToReview => _cardsToReview;
   int get cardsMistake => _cardsMistake;
+  bool get isLoading => _isLoading;
+  List<DateTime> get completedDates => _completedDates; // UI sẽ gọi cái này
+  
+  ReviewDashboardViewModel() {
+    refreshCounts();
+  }
+
+  /// Tải số lượng thẻ và chuỗi ngày thực tế từ Firebase
+  Future<void> refreshCounts() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // 1. Lấy danh sách thẻ đến hạn từ Repository
+      final dueCards = await _repository.getDueCards();
+      _cardsToReview = dueCards.length;
+      
+      // 2. Lấy dữ liệu ngày đã ôn tập để hiển thị Streak (Đã sửa ở đây)
+      _completedDates = await _repository.getCompletedDates();
+      
+      // Giả sử logic cho cardsMistake (có thể mở rộng sau)
+      _cardsMistake = 0; 
+      
+    } catch (e) {
+      debugPrint("Lỗi khi cập nhật Dashboard: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   String? validateBeforeNavigating(String mode) {
     if (mode == "DAILY_REVIEW" && _cardsToReview <= 0) {
@@ -29,112 +67,124 @@ class ReviewDashboardViewModel extends ChangeNotifier {
 // ==========================================
 // CLASS 2: Màn hình Player (FlashcardPlayerPage)
 // ==========================================
-class FlashcardData {
-  final String question;
-  final String answer;
-  final String source;
-  FlashcardData({required this.question, required this.answer, required this.source});
-}
-
 class FlashcardPlayerViewModel extends ChangeNotifier {
-  final List<FlashcardData> _cards = [
-    FlashcardData(question: "Tác giả Đắc Nhân Tâm?", answer: "Dale Carnegie", source: "Sách"),
-    FlashcardData(question: "Thủ đô VN?", answer: "Hà Nội", source: "Địa lý"),
-    FlashcardData(question: "Flutter dùng ngôn ngữ gì?", answer: "Dart", source: "IT"),
-  ];
+  final CardRepository _repository = CardRepository();
 
+  List<FlashcardData> _cards = [];
   int _currentIndex = 0;
   bool _isFlipped = false;
   bool _isFinished = false;
+  bool _isLoading = true;
 
+  int _easyCount = 0;
+  int _goodCount = 0;
+  int _hardCount = 0;
+
+  List<FlashcardData> get cards => _cards;
   FlashcardData get currentCard => _cards[_currentIndex];
   int get currentIndex => _currentIndex;
   int get totalCards => _cards.length;
   bool get isFlipped => _isFlipped;
   bool get isFinished => _isFinished;
+  bool get isLoading => _isLoading;
+
+  int get easyCount => _easyCount;
+  int get goodCount => _goodCount;
+  int get hardCount => _hardCount;
+
+  FlashcardPlayerViewModel() {
+    fetchCardsFromFirebase();
+  }
+
+  Future<void> fetchCardsFromFirebase() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _cards = await _repository.getDueCards();
+    } catch (e) {
+      debugPrint("Lỗi khi tải cards: $e");
+    } finally {
+      _isLoading = false;
+      if (_cards.isEmpty) _isFinished = true;
+      notifyListeners();
+    }
+  }
 
   void flipCard() {
     _isFlipped = !_isFlipped;
     notifyListeners();
   }
 
-  void handleRating(String rating) {
-    print("User chọn: $rating");
+  Future<void> handleRating(String ratingLabel) async {
+    if (ratingLabel == "Dễ") {
+      _easyCount++;
+    } else if (ratingLabel == "Tốt") {
+      _goodCount++;
+    } else {
+      _hardCount++;
+    }
+
+    int ratingValue = ratingLabel == "Dễ" ? 5 : (ratingLabel == "Tốt" ? 3 : 1);
+    try {
+      await _repository.logReview(currentCard.id, ratingValue);
+    } catch (e) {
+      debugPrint("Lỗi khi lưu review: $e");
+    }
+
     if (_currentIndex < _cards.length - 1) {
       _currentIndex++;
       _isFlipped = false;
-      notifyListeners();
     } else {
       _isFinished = true;
-      notifyListeners();
     }
+    notifyListeners();
   }
 }
 
 // ==========================================
 // CLASS 3: Màn hình Chọn sách (SelectBookPage)
-// Nhiệm vụ: Chứa danh sách sách giả lập & Logic tìm kiếm
 // ==========================================
 class SelectBookViewModel extends ChangeNotifier {
-  // 1. Data giả lập (Dùng Map như ông yêu cầu)
-  final List<Map<String, dynamic>> _allBooks = [
-    {
-      'title': "Đắc Nhân Tâm",
-      'author': "Dale Carnegie",
-      'count': 120,
-      'color': Colors.blue,
-      'image': "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1449557635i/4865.jpg"
-    },
-    {
-      'title': "Nhà Giả Kim",
-      'author': "Paulo Coelho",
-      'count': 85,
-      'color': Colors.purple,
-      'image': "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1654371463i/18144590.jpg"
-    },
-    {
-      'title': "Atomic Habits",
-      'author': "James Clear",
-      'count': 200,
-      'color': Colors.green,
-      'image': "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1655988385i/40121378.jpg"
-    },
-    {
-      'title': "Tâm lý học về tiền",
-      'author': "Morgan Housel",
-      'count': 45,
-      'color': Colors.orange,
-      'image': "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1635328224i/59495633.jpg"
-    },
-    {
-      'title': "Nghĩ Giàu Làm Giàu",
-      'author': "Napoleon Hill",
-      'count': 110,
-      'color': Colors.red,
-      'image': "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1463241782i/30186948.jpg"
-    },
-  ];
+  final BookRepository _bookRepository = BookRepository();
 
-  // Danh sách hiển thị (đã qua lọc)
-  List<Map<String, dynamic>> _filteredBooks = [];
-  List<Map<String, dynamic>> get books => _filteredBooks;
+  List<BookModel> _allBooks = []; 
+  List<BookModel> _filteredBooks = [];
+  bool _isLoading = true;
+
+  List<BookModel> get books => _filteredBooks;
+  bool get isLoading => _isLoading;
 
   SelectBookViewModel() {
-    _filteredBooks = List.from(_allBooks); // Mới vào hiển thị hết
+    fetchUserBooks();
   }
 
-  // LOGIC TÌM KIẾM
+  Future<void> fetchUserBooks() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _allBooks = await _bookRepository.getBooks();
+      _filteredBooks = List.from(_allBooks);
+    } catch (e) {
+      debugPrint("Lỗi khi tải sách: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   void searchBook(String query) {
     if (query.isEmpty) {
       _filteredBooks = List.from(_allBooks);
     } else {
       _filteredBooks = _allBooks.where((book) {
-        final title = book['title'].toString().toLowerCase();
-        final author = book['author'].toString().toLowerCase();
+        final title = book.title.toLowerCase();
+        final author = book.author.toLowerCase();
         final search = query.toLowerCase();
         return title.contains(search) || author.contains(search);
       }).toList();
     }
-    notifyListeners(); // Báo UI update
+    notifyListeners();
   }
 }
