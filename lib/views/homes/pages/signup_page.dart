@@ -230,15 +230,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   onPressed: _signUpWithGoogle,
                 ),
 
-                const SizedBox(height: 12),
-
-                // FACEBOOK
-                _socialButton(
-                  icon: Icons.facebook,
-                  iconColor: Colors.blue,
-                  text: 'Tiếp tục với Facebook',
-                ),
-
                 const SizedBox(height: 24),
 
                 // SIGN UP BUTTON
