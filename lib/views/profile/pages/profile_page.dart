@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+
+import '../../../viewmodels/community_viewmodel.dart';
+import '../../../viewmodels/library_viewmodel.dart';
 
 import '../../../models/user_profile.dart';
 import '../../../services/profile_service.dart';
@@ -106,9 +109,18 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (confirm == true) {
+      // Reset ViewModels before signing out to clear old user data
+      if (mounted) {
+        try {
+          context.read<CommunityViewModel>().reset();
+          context.read<LibraryViewModel>().reset();
+        } catch (e) {
+          // Ignore if ViewModels are not available
+        }
+      }
       await _authRepository.signOut();
       if (mounted) {
-        // Use rootNavigator: true to get the root Navigator, not the nested tab Navigator
+        // Use rootNavigator to clear the entire navigation stack including nested navigators
         Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => LoginScreen()),
           (route) => false,
