@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../services/friend_service.dart';
+import '../../../services/notification_settings_service.dart';
 import '../../../models/friend_model.dart';
 import '../../../models/community_post_model.dart';
 import '../../../viewmodels/review_viewmodel.dart';
@@ -20,6 +21,7 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   final FriendService _friendService = FriendService();
+  final NotificationSettingsService _settingsService = NotificationSettingsService();
 
   @override
   Widget build(BuildContext context) {
@@ -44,60 +46,76 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         ),
       ),
-      body: StreamBuilder<List<FriendRequest>>(
-        stream: _friendService.getFriendRequestsStream(),
-        builder: (context, snapshot) {
-          final requests = snapshot.data ?? [];
-          final cardsToReview = reviewVm.cardsToReview;
-          final friendPosts = communityVm.posts.take(5).toList();
+      body: FutureBuilder<Map<String, bool>>(
+        future: _settingsService.loadAllSettings(),
+        builder: (context, settingsSnapshot) {
+          // Use default values (all enabled) if loading or error
+          final settings = settingsSnapshot.data ?? {
+            'push': true,
+            'remind': true,
+            'achievement': true,
+            'community': true,
+            'comment': true,
+          };
+          final isRemindEnabled = settings['remind'] ?? true;
+          final isCommunityEnabled = settings['community'] ?? true;
           
-          // Check if there are any notifications
-          final hasReviewReminder = cardsToReview > 0;
-          final hasFriendRequests = requests.isNotEmpty;
-          final hasFriendActivity = friendPosts.isNotEmpty;
-          
-          if (!hasReviewReminder && !hasFriendRequests && !hasFriendActivity) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_none, size: 80, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Chưa có thông báo nào',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+          return StreamBuilder<List<FriendRequest>>(
+            stream: _friendService.getFriendRequestsStream(),
+            builder: (context, snapshot) {
+              final requests = snapshot.data ?? [];
+              final cardsToReview = reviewVm.cardsToReview;
+              final friendPosts = communityVm.posts.take(5).toList();
+              
+              // Check if there are any notifications based on settings
+              final hasReviewReminder = cardsToReview > 0 && isRemindEnabled;
+              final hasFriendRequests = requests.isNotEmpty && isCommunityEnabled;
+              final hasFriendActivity = friendPosts.isNotEmpty && isCommunityEnabled;
+              
+              if (!hasReviewReminder && !hasFriendRequests && !hasFriendActivity) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.notifications_none, size: 80, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Chưa có thông báo nào',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }
+                );
+              }
 
-          return ListView(
-            children: [
-              // === NHẮC NHỞ ÔN TẬP ===
-              if (hasReviewReminder) ...[
-                _buildSectionHeader('Nhắc nhở ôn tập', Icons.schedule, Colors.orange),
-                _ReviewReminderItem(cardsToReview: cardsToReview),
-              ],
-              
-              // === LỜI MỜI KẾT BẠN ===
-              if (hasFriendRequests) ...[
-                _buildSectionHeader('Lời mời kết bạn', Icons.person_add, primaryGreen),
-                ...requests.map((request) => _FriendRequestNotificationItem(
-                  request: request,
-                  onAccept: () => _handleAccept(request),
-                  onReject: () => _handleReject(request),
-                )),
-              ],
-              
-              // === HOẠT ĐỘNG TỪ BẠN BÈ ===
-              if (hasFriendActivity) ...[
-                _buildSectionHeader('Hoạt động từ bạn bè', Icons.groups, Colors.blue),
-                ...friendPosts.map((post) => _FriendActivityItem(post: post)),
-              ],
-              
-              const SizedBox(height: 20),
-            ],
+              return ListView(
+                children: [
+                  // === NHẮC NHỞ ÔN TẬP ===
+                  if (hasReviewReminder) ...[
+                    _buildSectionHeader('Nhắc nhở ôn tập', Icons.schedule, Colors.orange),
+                    _ReviewReminderItem(cardsToReview: cardsToReview),
+                  ],
+                  
+                  // === LỜI MỜI KẾT BẠN ===
+                  if (hasFriendRequests) ...[
+                    _buildSectionHeader('Lời mời kết bạn', Icons.person_add, primaryGreen),
+                    ...requests.map((request) => _FriendRequestNotificationItem(
+                      request: request,
+                      onAccept: () => _handleAccept(request),
+                      onReject: () => _handleReject(request),
+                    )),
+                  ],
+                  
+                  // === HOẠT ĐỘNG TỪ BẠN BÈ ===
+                  if (hasFriendActivity) ...[
+                    _buildSectionHeader('Hoạt động từ bạn bè', Icons.groups, Colors.blue),
+                    ...friendPosts.map((post) => _FriendActivityItem(post: post)),
+                  ],
+                  
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
           );
         },
       ),
