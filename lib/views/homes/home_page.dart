@@ -121,11 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasNotes = reviewVm.cardsToReview > 0; // Có ghi chú cần ôn tập
     final hasFriends = communityVm.friends.isNotEmpty; // Có bạn bè
     
-    // Kiểm tra người dùng mới: chưa có sách nào trong thư viện
-    final isNewUser = libraryVm.libraryBooks.isEmpty && 
-                      libraryVm.readingBooks.isEmpty && 
-                      libraryVm.finishedBooks.isEmpty;
-    
     return Material(
       color: Colors.white,
       child: SafeArea(
@@ -140,27 +135,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: isNewUser 
-                    ? [
-                        // === UI cho người dùng MỚI ===
-                        _welcomeBanner(context),
-                        _sectionTitle('Sách phổ biến'),
-                        _popularBooks(context),
-                        _suggestedBooks(context),
-                      ]
-                    : [
-                        // === UI cho người dùng CŨ ===
-                        // Chỉ hiện "Đang đọc" nếu có sách thật
-                        if (hasReadingBooks) ...[
-                          _sectionTitle('Đang đọc'),
-                          _currentlyReading(),
-                        ],
-                        // Chỉ hiện "Ôn tập hôm nay" khi có ghi chú
-                        if (hasNotes) _reviewSection(context),
-                        // Chỉ hiện "Tin mới từ vòng tròn" khi có bạn bè
-                        if (hasFriends) _circleUpdates(),
-                        _suggestedBooks(context),
-                      ],
+                  children: [
+                    // Nếu chưa có sách đang đọc → hiện banner "Bắt đầu ngay" và "Sách phổ biến"
+                    if (!hasReadingBooks) ...[
+                      _welcomeBanner(context),
+                      _sectionTitle('Sách phổ biến'),
+                      _popularBooks(context),
+                    ],
+                    // Nếu có sách đang đọc → hiện section "Đang đọc"
+                    if (hasReadingBooks) ...[
+                      _sectionTitle('Đang đọc'),
+                      _currentlyReading(),
+                    ],
+                    // Chỉ hiện "Ôn tập hôm nay" khi có ghi chú
+                    if (hasNotes) _reviewSection(context),
+                    // Chỉ hiện "Tin mới từ vòng tròn" khi có bạn bè
+                    if (hasFriends) _circleUpdates(),
+                    // Luôn hiện "Gợi ý cho bạn"
+                    _suggestedBooks(context),
+                  ],
                 ),
               ),
             ),
