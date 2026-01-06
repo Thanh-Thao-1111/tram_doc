@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/profile_tokens.dart';
 import '../widgets/section_title.dart';
+import '../../../services/notification_settings_service.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -9,7 +10,9 @@ class NotificationSettingsPage extends StatefulWidget {
   State<NotificationSettingsPage> createState() => _NotificationSettingsPageState();
 }
 
-class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
+class _NotificationSettingsPageState extends State<NotificationSettingsPage> with WidgetsBindingObserver {
+  final NotificationSettingsService _settingsService = NotificationSettingsService();
+  
   bool push = true;
   bool remind = true;
   bool achievement = true;
@@ -17,6 +20,47 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool comment = true;
 
   TimeOfDay time = const TimeOfDay(hour: 8, minute: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reload settings when app resumes
+    if (state == AppLifecycleState.resumed) {
+      _loadSettings();
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      debugPrint('=== Loading notification settings ===');
+      final settings = await _settingsService.loadAllSettings();
+      debugPrint('Loaded settings: $settings');
+      if (mounted) {
+        setState(() {
+          push = settings['push'] ?? true;
+          remind = settings['remind'] ?? true;
+          achievement = settings['achievement'] ?? true;
+          community = settings['community'] ?? true;
+          comment = settings['comment'] ?? true;
+        });
+      }
+    } catch (e) {
+      // Keep default values if loading fails
+      debugPrint('Error loading notification settings: $e');
+    }
+  }
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(context: context, initialTime: time);
@@ -42,35 +86,50 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             title: 'Thông báo đẩy',
             subtitle: 'Nhận thông báo trên thiết bị',
             value: push,
-            onChanged: (v) => setState(() => push = v),
+            onChanged: (v) async {
+              setState(() => push = v);
+              await _settingsService.setPushEnabled(v);
+            },
           ),
           _SwitchTile(
             icon: Icons.menu_book_outlined,
             title: 'Nhắc nhở đọc sách',
             subtitle: 'Nhắc bạn đọc mỗi ngày',
             value: remind,
-            onChanged: (v) => setState(() => remind = v),
+            onChanged: (v) async {
+              setState(() => remind = v);
+              await _settingsService.setRemindEnabled(v);
+            },
           ),
           _SwitchTile(
             icon: Icons.emoji_events_outlined,
             title: 'Thành tích mới',
             subtitle: 'Khi bạn đạt thành tích',
             value: achievement,
-            onChanged: (v) => setState(() => achievement = v),
+            onChanged: (v) async {
+              setState(() => achievement = v);
+              await _settingsService.setAchievementEnabled(v);
+            },
           ),
           _SwitchTile(
             icon: Icons.groups_outlined,
             title: 'Hoạt động cộng đồng',
             subtitle: 'Cập nhật từ cộng đồng',
             value: community,
-            onChanged: (v) => setState(() => community = v),
+            onChanged: (v) async {
+              setState(() => community = v);
+              await _settingsService.setCommunityEnabled(v);
+            },
           ),
           _SwitchTile(
             icon: Icons.chat_bubble_outline,
             title: 'Bình luận và thảo luận',
             subtitle: 'Khi có người phản hồi',
             value: comment,
-            onChanged: (v) => setState(() => comment = v),
+            onChanged: (v) async {
+              setState(() => comment = v);
+              await _settingsService.setCommentEnabled(v);
+            },
           ),
 
           const SectionTitle('Thời gian nhắc nhở'),

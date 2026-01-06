@@ -108,7 +108,8 @@ class _ProfilePageState extends State<ProfilePage> {
     if (confirm == true) {
       await _authRepository.signOut();
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
+        // Use rootNavigator: true to get the root Navigator, not the nested tab Navigator
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => LoginScreen()),
           (route) => false,
         );
