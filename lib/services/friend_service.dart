@@ -165,8 +165,8 @@ class FriendService {
           'addedAt': FieldValue.serverTimestamp(),
         });
 
-    // Update request status
-    await requestDoc.reference.update({'status': 'accepted'});
+    // Delete the friend request after processing
+    await requestDoc.reference.delete();
   }
 
   /// Reject a friend request
@@ -174,12 +174,13 @@ class FriendService {
     final uid = currentUserId;
     if (uid == null) throw 'Vui lòng đăng nhập';
 
+    // Delete the friend request
     await _firestore
         .collection('users')
         .doc(uid)
         .collection('friendRequests')
         .doc(requestId)
-        .update({'status': 'rejected'});
+        .delete();
   }
 
   // ==================== FRIENDS ====================

@@ -277,4 +277,19 @@ class LibraryViewModel extends ChangeNotifier {
     if (value == null || value.trim().isEmpty) return 'Vui lòng nhập $side';
     return null;
   }
+
+  /// Reset all state - call this when user logs out
+  void reset() {
+    _isLoading = false;
+    _isSearching = false;
+    _errorMessage = null;
+    _libraryBooks = [];
+    _searchedBooks = [];
+    _notes = [];
+    _reviews = [];
+    _currentBook = null;
+    _currentPage = 0;
+    _localSearchQuery = '';
+    notifyListeners();
+  }
 }
