@@ -12,15 +12,52 @@ class CommunityService {
 
   // ==================== POSTS ====================
 
-  /// Stream of community posts (ordered by createdAt desc)
-  Stream<List<CommunityPost>> getPostsStream() {
-    return _firestore
-        .collection('posts')
-        .orderBy('createdAt', descending: true)
-        .limit(50)
-        .snapshots()
-        .map((snapshot) => 
-            snapshot.docs.map((doc) => CommunityPost.fromFirestore(doc)).toList());
+  /// Stream of community posts from friends and self (ordered by createdAt desc)
+  Stream<List<CommunityPost>> getPostsStream() async* {
+    final user = _auth.currentUser;
+    if (user == null) {
+      yield [];
+      return;
+    }
+    
+    // Get list of friend IDs
+    final friendsSnapshot = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('friends')
+        .get();
+    
+    // Include self + friends
+    final allowedUserIds = [user.uid];
+    for (var doc in friendsSnapshot.docs) {
+      allowedUserIds.add(doc.id);
+    }
+    
+    // If no friends, only show own posts
+    if (allowedUserIds.length == 1) {
+      yield* _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .limit(50)
+          .snapshots()
+          .map((snapshot) => 
+              snapshot.docs.map((doc) => CommunityPost.fromFirestore(doc)).toList());
+    } else {
+      // Firestore only allows whereIn with max 10 elements
+      // For simplicity, just get all posts and filter client-side
+      yield* _firestore
+          .collection('posts')
+          .orderBy('createdAt', descending: true)
+          .limit(100)
+          .snapshots()
+          .map((snapshot) => 
+              snapshot.docs
+                  .map((doc) => CommunityPost.fromFirestore(doc))
+                  .where((post) => allowedUserIds.contains(post.userId))
+                  .take(50)
+                  .toList());
+    }
   }
 
   /// Get posts for a specific user
