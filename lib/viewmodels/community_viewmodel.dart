@@ -38,10 +38,17 @@ class CommunityViewModel extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   List<FriendBookSuggestion> get friendBookSuggestions => _friendBookSuggestions;
 
+  // Stream initialization flag
+  bool _streamsInitialized = false;
+
   // ==================== POSTS ====================
 
   /// Initialize streams
   void initStreams() {
+    // Prevent duplicate stream subscriptions
+    if (_streamsInitialized) return;
+    _streamsInitialized = true;
+
     _communityService.getPostsStream().listen((posts) {
       _posts = posts;
       notifyListeners();
@@ -221,6 +228,9 @@ class CommunityViewModel extends ChangeNotifier {
   Future<bool> acceptFriendRequest(String requestId) async {
     try {
       await _friendService.acceptFriendRequest(requestId);
+      // Remove from local list immediately for instant UI update
+      _friendRequests.removeWhere((r) => r.id == requestId);
+      notifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -233,6 +243,9 @@ class CommunityViewModel extends ChangeNotifier {
   Future<bool> rejectFriendRequest(String requestId) async {
     try {
       await _friendService.rejectFriendRequest(requestId);
+      // Remove from local list immediately for instant UI update
+      _friendRequests.removeWhere((r) => r.id == requestId);
+      notifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -256,6 +269,21 @@ class CommunityViewModel extends ChangeNotifier {
   /// Clear error message
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Reset all state - call this when user logs out
+  void reset() {
+    _isLoading = false;
+    _errorMessage = null;
+    _posts = [];
+    _comments = [];
+    _friends = [];
+    _friendRequests = [];
+    _searchResults = [];
+    _searchQuery = '';
+    _friendBookSuggestions = [];
+    _streamsInitialized = false; // Allow streams to be re-initialized
     notifyListeners();
   }
 }
