@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 import '../widgets/study_progress_bar.dart'; 
 import 'review_result_page.dart'; 
 import '../../../viewmodels/review_viewmodel.dart'; 
+import '../../../models/card_model.dart'; // Import để có CardModel
 
 class FlashcardPlayerPage extends StatefulWidget {
-  final String mode; 
-  const FlashcardPlayerPage({super.key, required this.mode});
+  final String mode; // "DAILY_REVIEW" hoặc "BOOK_REVIEW"
+  final List<CardModel>? cards; // NHẬN DANH SÁCH THẺ TỪ BÊN NGOÀI (QUAN TRỌNG)
+
+  const FlashcardPlayerPage({
+    super.key, 
+    required this.mode,
+    this.cards, // Thêm tham số này
+  });
 
   @override
   State<FlashcardPlayerPage> createState() => _FlashcardPlayerPageState();
@@ -13,7 +20,23 @@ class FlashcardPlayerPage extends StatefulWidget {
 
 class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
   // Khởi tạo ViewModel
-  final FlashcardPlayerViewModel _viewModel = FlashcardPlayerViewModel();
+  late final FlashcardPlayerViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = FlashcardPlayerViewModel();
+    
+    // Nếu có danh sách thẻ được truyền vào (từ Ôn theo sách), thì dùng nó
+    WidgetsBinding.instance.addPostFrameCallback((_){
+    if (widget.cards != null && widget.cards!.isNotEmpty) {
+      _viewModel.setCardsManually(widget.cards!);
+    } else {
+      // Nếu không, tự tải thẻ Daily Review từ Firebase
+      _viewModel.fetchCardsFromFirebase();
+    }
+  });
+  }
 
   @override
   void dispose() {
@@ -27,7 +50,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
       listenable: _viewModel,
       builder: (context, child) {
         
-        // 1. XỬ LÝ TRẠNG THÁI LOADING (Khi đang lấy data từ Firebase)
+        // 1. XỬ LÝ TRẠNG THÁI LOADING
         if (_viewModel.isLoading) {
           return const Scaffold(
             body: Center(
@@ -36,20 +59,20 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text("Đang tải dữ liệu từ Firebase..."),
+                  Text("Đang tải dữ liệu..."),
                 ],
               ),
             ),
           );
         }
 
-        // 2. LOGIC ĐIỀU HƯỚNG: Khi học xong hoặc không có bài để học
+        // 2. LOGIC ĐIỀU HƯỚNG KHI HỌC XONG
         if (_viewModel.isFinished) {
           Future.microtask(() {
             if (context.mounted) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) =>  ReviewResultPage(
+                MaterialPageRoute(builder: (context) => ReviewResultPage(
                   easyCount: _viewModel.easyCount,
                   goodCount: _viewModel.goodCount,
                   hardCount: _viewModel.hardCount,
@@ -57,18 +80,18 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
               );
             }
           });
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
-        // 3. KIỂM TRA DANH SÁCH RỖNG (Trường hợp Repository trả về list rỗng)
+        // 3. KIỂM TRA DANH SÁCH RỖNG
         if (_viewModel.cards.isEmpty) {
           return Scaffold(
             appBar: AppBar(leading: const CloseButton()),
-            body: const Center(child: Text("Hôm nay bạn không có bài cần ôn tập!")),
+            body: const Center(child: Text("Không có thẻ nào để ôn tập!")),
           );
         }
 
-        // Lấy thẻ hiện tại an toàn
+        // Lấy thẻ hiện tại
         final currentCard = _viewModel.currentCard;
 
         return Scaffold(
@@ -84,7 +107,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
             title: Column(
               children: [
                 Text(
-                  widget.mode == "DAILY_REVIEW" ? "Ôn tập hàng ngày" : "Ôn tập",
+                  widget.mode == "DAILY_REVIEW" ? "Ôn tập hàng ngày" : "Ôn tập theo sách",
                   style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -128,7 +151,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
                 ),
               ),
 
-              // --- KHU VỰC NÚT BẤM (Chỉ hiện khi đã lật) ---
+              // --- KHU VỰC NÚT BẤM ---
               Container(
                 padding: const EdgeInsets.all(24),
                 height: 120,
@@ -144,7 +167,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
   }
 
   // --- UI MẶT TRƯỚC ---
-  Widget _buildFrontFace(dynamic card) {
+  Widget _buildFrontFace(CardModel card) { // Đã sửa type thành CardModel
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -161,7 +184,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
           child: Center(
             child: SingleChildScrollView(
               child: Text(
-                card.question, 
+                card.front, // <--- SỬA: dùng card.front
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
@@ -169,8 +192,6 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
           ),
         ),
         const Spacer(),
-        // Chỉnh sửa hiển thị nguồn/note từ Firebase
-        Text("Ghi chú: ${card.noteId ?? 'Không có'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 32),
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
@@ -185,7 +206,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
   }
 
   // --- UI MẶT SAU ---
-  Widget _buildBackFace(dynamic card) {
+  Widget _buildBackFace(CardModel card) { // Đã sửa type thành CardModel
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -202,7 +223,7 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
           child: Center(
             child: SingleChildScrollView(
               child: Text(
-                card.answer,
+                card.back, // <--- SỬA: dùng card.back
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
@@ -210,7 +231,6 @@ class _FlashcardPlayerPageState extends State<FlashcardPlayerPage> {
           ),
         ),
         const Spacer(),
-        Text("Ease Factor: ${card.easeFactor}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }

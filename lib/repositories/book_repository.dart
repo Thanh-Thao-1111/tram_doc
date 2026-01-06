@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/book_model.dart';
+import '../models/review_model.dart';
 
 class BookRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -210,6 +211,86 @@ class BookRepository {
       await _booksCollection.doc(bookId).collection('notes').doc(noteId).delete();
     } catch (e) {
       throw Exception('Không thể xóa ghi chú: $e');
+    }
+  }
+
+  /// Update a note
+  Future<void> updateNote(String bookId, String noteId, String content, int pageNumber) async {
+    if (_currentUserId == null) {
+      throw Exception('Bạn cần đăng nhập để sửa ghi chú');
+    }
+
+    try {
+      await _booksCollection
+          .doc(bookId)
+          .collection('notes')
+          .doc(noteId)
+          .update({
+            'content': content,
+            'page': pageNumber,
+            'updatedAt': FieldValue.serverTimestamp(), // Thêm thời gian sửa đổi nếu cần
+          });
+    } catch (e) {
+      throw Exception('Không thể cập nhật ghi chú: $e');
+    }
+  }
+  // Trong BookRepository
+
+  Future<void> addReview({required String bookId, required String comment, required int rating}) async {
+    if (_currentUserId == null) throw Exception("Cần đăng nhập");
+
+    final bookRef = _firestore.collection('books').doc(bookId);
+
+    // 1. Chạy Transaction để đảm bảo tính toán chính xác
+    await _firestore.runTransaction((transaction) async {
+      // Lấy thông tin sách hiện tại để biết đang có bao nhiêu đánh giá
+      final bookSnapshot = await transaction.get(bookRef);
+      if (!bookSnapshot.exists) throw Exception("Sách không tồn tại");
+
+      final bookData = bookSnapshot.data() as Map<String, dynamic>;
+      
+      // Lấy số liệu cũ (nếu chưa có thì coi là 0)
+      double currentRating = (bookData['rating'] ?? 0).toDouble();
+      int ratingCount = (bookData['ratingCount'] ?? 0);
+
+      // Tính toán trung bình mới
+      // Công thức: ((Trung bình cũ * Số lượng cũ) + Điểm mới) / (Số lượng cũ + 1)
+      double newRating = ((currentRating * ratingCount) + rating) / (ratingCount + 1);
+      
+      // Thêm review vào collection con
+      final reviewRef = bookRef.collection('reviews').doc();
+      transaction.set(reviewRef, {
+        'userId': _currentUserId,
+        'userName': _auth.currentUser?.displayName ?? 'Người dùng',
+        'rating': rating,
+        'comment': comment,
+        'date': FieldValue.serverTimestamp(),
+      });
+
+      // Cập nhật lại số sao trung bình cho sách (để hiển thị ở header)
+      transaction.update(bookRef, {
+        'rating': newRating,
+        'ratingCount': ratingCount + 1,
+      });
+    });
+  }
+
+  // Đảm bảo bạn đã có hàm getReviews khớp với cấu trúc trên
+  Future<List<ReviewModel>> getReviews(String bookId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('books')
+          .doc(bookId)
+          .collection('reviews')
+          .orderBy('date', descending: true)
+          .get();
+          
+     return snapshot.docs.map((doc) {
+        return ReviewModel.fromFirestore(doc.data(), doc.id);
+      }).toList();
+    } catch (e) {
+      print("LỖI LẤY REVIEW: $e");
+      return [];
     }
   }
 }

@@ -1,36 +1,51 @@
-// lib/models/card_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class FlashcardData {
+class CardModel {
   final String id;
-  final String question;
-  final String answer;
-  final String? noteId;
+  final String userId;
+  final String bookId; // Quan trọng: Để lọc thẻ theo sách
+  final String front;  // Mặt trước (thay cho question)
+  final String back;   // Mặt sau (thay cho answer)
+  
+  // Các trường cho thuật toán Spaced Repetition (SM-2)
   final double easeFactor;
-  final int reviewInterval;
-  final DateTime nextReviewDate;
+  final int interval;
+  final int repetitions;
+  final DateTime? nextReview;
 
-  FlashcardData({
+  CardModel({
     required this.id,
-    required this.question,
-    required this.answer,
-    this.noteId,
+    required this.userId,
+    required this.bookId,
+    required this.front,
+    required this.back,
     required this.easeFactor,
-    required this.reviewInterval,
-    required this.nextReviewDate,
+    required this.interval,
+    required this.repetitions,
+    this.nextReview,
   });
 
   // Chuyển từ Firestore Document sang Object
-  factory FlashcardData.fromFirestore(DocumentSnapshot doc) {
+  factory CardModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return FlashcardData(
+    
+    return CardModel(
       id: doc.id,
-      question: data['question'] ?? '',
-      answer: data['answer'] ?? '',
-      noteId: data['noteId'],
+      userId: data['userId'] ?? '',
+      bookId: data['bookId'] ?? '',
+      
+      // Hỗ trợ cả tên cũ (question) và tên mới (front) để không bị lỗi dữ liệu cũ
+      front: data['front'] ?? data['question'] ?? '',
+      back: data['back'] ?? data['answer'] ?? '',
+      
       easeFactor: (data['easeFactor'] ?? 2.5).toDouble(),
-      reviewInterval: data['reviewInterval'] ?? 1,
-      nextReviewDate: (data['nextReviewDate'] as Timestamp).toDate(),
+      interval: data['interval'] ?? 0,
+      repetitions: data['repetitions'] ?? 0,
+      
+      // Chuyển đổi Timestamp an toàn
+      nextReview: data['nextReviewDate'] != null 
+          ? (data['nextReviewDate'] as Timestamp).toDate() 
+          : null,
     );
   }
 }
