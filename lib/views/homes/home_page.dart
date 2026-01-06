@@ -8,6 +8,8 @@ import 'package:tram_doc/core/assets/app_images.dart';
 import '../../models/book_model.dart';
 import '../../viewmodels/home_viewmodel.dart';
 import '../../viewmodels/library_viewmodel.dart';
+import '../../viewmodels/community_viewmodel.dart';
+import '../../viewmodels/review_viewmodel.dart';
 
 import '../books/add_book_page.dart';
 import '../books/pages/add_bookshelf_page.dart';
@@ -61,12 +63,20 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted && doc.exists) {
           final data = doc.data();
           setState(() {
-            // Priority: displayName > username > email
-            _username = data?['displayName'] ?? 
-                        data?['username'] ?? 
-                        user.displayName ?? 
-                        user.email?.split('@').first ?? 
-                        'Bạn';
+            // Priority: nếu có displayName (tên đã thay đổi) thì hiện displayName
+            // Nếu không thì hiện username
+            final displayName = data?['displayName'];
+            final username = data?['username'];
+            
+            if (displayName != null && displayName.toString().trim().isNotEmpty) {
+              _username = displayName;
+            } else if (username != null && username.toString().trim().isNotEmpty) {
+              _username = username;
+            } else {
+              _username = user.displayName ?? 
+                          user.email?.split('@').first ?? 
+                          'Bạn';
+            }
           });
         }
       }, onError: (e) {
@@ -104,7 +114,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final libraryVm = context.watch<LibraryViewModel>();
+    final communityVm = context.watch<CommunityViewModel>();
+    final reviewVm = context.watch<ReviewDashboardViewModel>();
+    
     final hasReadingBooks = libraryVm.readingBooks.isNotEmpty;
+    final hasNotes = reviewVm.cardsToReview > 0; // Có ghi chú cần ôn tập
+    final hasFriends = communityVm.friends.isNotEmpty; // Có bạn bè
+    
+    // Kiểm tra người dùng mới: chưa có sách nào trong thư viện
+    final isNewUser = libraryVm.libraryBooks.isEmpty && 
+                      libraryVm.readingBooks.isEmpty && 
+                      libraryVm.finishedBooks.isEmpty;
     
     return Material(
       color: Colors.white,
@@ -120,17 +140,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Chỉ hiện "Đang đọc" nếu có sách thật
-                    if (hasReadingBooks) ...[
-                      _sectionTitle('Đang đọc'),
-                      _currentlyReading(),
-                    ],
-                    _reviewSection(context),
-                    // Ẩn "Tin mới từ vòng tròn" - sẽ hiện khi có bạn bè thật
-                    // _circleUpdates(),
-                    _suggestedBooks(context),
-                  ],
+                  children: isNewUser 
+                    ? [
+                        // === UI cho người dùng MỚI ===
+                        _welcomeBanner(context),
+                        _sectionTitle('Sách phổ biến'),
+                        _popularBooks(context),
+                        _suggestedBooks(context),
+                      ]
+                    : [
+                        // === UI cho người dùng CŨ ===
+                        // Chỉ hiện "Đang đọc" nếu có sách thật
+                        if (hasReadingBooks) ...[
+                          _sectionTitle('Đang đọc'),
+                          _currentlyReading(),
+                        ],
+                        // Chỉ hiện "Ôn tập hôm nay" khi có ghi chú
+                        if (hasNotes) _reviewSection(context),
+                        // Chỉ hiện "Tin mới từ vòng tròn" khi có bạn bè
+                        if (hasFriends) _circleUpdates(),
+                        _suggestedBooks(context),
+                      ],
                 ),
               ),
             ),
@@ -183,6 +213,128 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => _openNotifications(context),
           ),
         ],
+      ),
+    );
+  }
+
+  // ================= WELCOME BANNER (cho người dùng mới) =================
+  Widget _welcomeBanner(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3BA66B), Color(0xFF5CB85C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: primaryAppColor.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bắt đầu hành trình đọc sách của bạn!',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Khám phá hàng nghìn đầu sách, tạo ghi chú thông minh và kết nối với cộng đồng yêu sách.',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.9),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _openAddBook(context),
+              icon: const Icon(Icons.menu_book, size: 20),
+              label: const Text('Thêm sách ngay'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: primaryAppColor,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= POPULAR BOOKS (cho người dùng mới) =================
+  Widget _popularBooks(BuildContext context) {
+    final popularBooks = vm.popularBooks;
+    
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: popularBooks.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, index) {
+          final book = popularBooks[index];
+          return GestureDetector(
+            onTap: () => _openAddToShelf(context, book),
+            child: Container(
+              width: 150,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  book.imageUrl,
+                  width: 150,
+                  height: 220,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 150,
+                    height: 220,
+                    color: Colors.grey[300],
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.book, size: 40, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        Text(
+                          book.title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -246,6 +398,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================= REVIEW =================
   Widget _reviewSection(BuildContext context) {
+    final reviewVm = context.watch<ReviewDashboardViewModel>();
+    final noteCount = reviewVm.cardsToReview;
+    
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -276,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Bạn có 12 ghi chú cần ôn lại.',
+                    'Bạn có $noteCount ghi chú cần ôn lại.',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: descriptionBlueColor,
@@ -316,94 +471,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================= CIRCLE UPDATES =================
   Widget _circleUpdates() {
-  return Padding(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Tiêu đề
-        Text(
-          'Tin mới từ vòng tròn',
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
+    final communityVm = context.watch<CommunityViewModel>();
+    final posts = communityVm.posts.take(3).toList(); // Chỉ lấy 3 bài viết gần nhất
+    
+    if (posts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tiêu đề
+          Text(
+            'Tin mới từ vòng tròn',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Danh sách tin
-        ...vm.circleUpdates.map((u) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 👤 AVATAR (BÊN TRÁI)
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: NetworkImage(u.avatarUrl),
-              ),
+          const SizedBox(height: 12),
+          // Danh sách tin từ bạn bè
+          ...posts.map((post) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 👤 AVATAR (BÊN TRÁI)
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage: post.userAvatar != null 
+                        ? NetworkImage(post.userAvatar!)
+                        : null,
+                    child: post.userAvatar == null 
+                        ? const Icon(Icons.person, size: 20)
+                        : null,
+                  ),
 
-              const SizedBox(width: 12),
+                  const SizedBox(width: 12),
 
-              // 📝 TEXT
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.black,
+                  // 📝 TEXT
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: post.userName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextSpan(text: ' ${post.actionText} '),
+                              if (post.bookTitle != null)
+                                TextSpan(
+                                  text: post.bookTitle,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                        children: [
-                          TextSpan(
-                            text: u.user,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        const SizedBox(height: 4),
+                        Text(
+                          post.timeAgo,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
                           ),
-                          TextSpan(text: ' ${u.action} '),
-                          TextSpan(
-                            text: u.bookName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      u.time,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
 
-              // 📕 ẢNH SÁCH (BÊN PHẢI)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.network(
-                  u.bookCoverUrl,
-                  width: 40,
-                  height: 56,
-                  fit: BoxFit.cover,
-                ),
+                  // 📕 ẢNH SÁCH (BÊN PHẢI)
+                  if (post.bookCoverUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.network(
+                        post.bookCoverUrl!,
+                        width: 40,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 40,
+                          height: 56,
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.book, size: 20),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-        );
-      }),
-      ],
-    ),
-  );
-}
+            );
+          }),
+        ],
+      ),
+    );
+  }
 
 
 

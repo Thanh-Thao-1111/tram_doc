@@ -16,7 +16,7 @@ class StatsService {
       final snapshot = await _firestore
           .collection('books')
           .where('userId', isEqualTo: uid)
-          .where('readingStatus', isEqualTo: 'finished')
+          .where('readingStatus', isEqualTo: 'completed')
           .get();
       return snapshot.docs.length;
     } catch (e) {
@@ -125,7 +125,7 @@ class StatsService {
       final snapshot = await _firestore
           .collection('books')
           .where('userId', isEqualTo: uid)
-          .where('readingStatus', isEqualTo: 'finished')
+          .where('readingStatus', isEqualTo: 'completed')
           .get();
 
       return snapshot.docs.map((doc) {

@@ -105,15 +105,21 @@ class FriendService {
     final uid = currentUserId;
     if (uid == null) return Stream.value([]);
 
+    // Simplified query - sort client-side to avoid composite index
     return _firestore
         .collection('users')
         .doc(uid)
         .collection('friendRequests')
         .where('status', isEqualTo: 'pending')
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => 
-            snapshot.docs.map((doc) => FriendRequest.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final requests = snapshot.docs
+              .map((doc) => FriendRequest.fromFirestore(doc))
+              .toList();
+          // Sort by createdAt descending
+          requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return requests;
+        });
   }
 
   /// Accept a friend request

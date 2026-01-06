@@ -9,6 +9,7 @@ import 'views/homes/pages/welcome_page.dart';
 import 'views/library/library_page.dart';
 import 'viewmodels/library_viewmodel.dart';
 import 'viewmodels/community_viewmodel.dart';
+import 'viewmodels/review_viewmodel.dart';
 import 'views/main_page.dart';
 
 void main() async {
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => LibraryViewModel()),
         ChangeNotifierProvider(create: (_) => CommunityViewModel()),
+        ChangeNotifierProvider(create: (_) => ReviewDashboardViewModel()),
       ],
       child: MaterialApp(
         title: 'Trạm Đọc',

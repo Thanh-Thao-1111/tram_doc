@@ -31,6 +31,40 @@ class HomeViewModel {
   ];
 
 
+  /// Sách phổ biến (cho người dùng mới)
+  final List<BookModel> popularBooks = [
+    BookModel(
+      id: 'popular_1',
+      title: 'Nhà Giả Kim',
+      author: 'Paulo Coelho',
+      imageUrl: 'https://upload.wikimedia.org/wikipedia/vi/9/9c/Nh%C3%A0_gi%E1%BA%A3_kim_%28s%C3%A1ch%29.jpg',
+      pageCount: 228,
+      publishedDate: '1988',
+      categories: ['Fiction', 'Philosophy'],
+      description: 'Nhà giả kim là cuốn tiểu thuyết được viết bởi nhà văn người Brazil Paulo Coelho, xuất bản lần đầu tiên năm 1988.',
+    ),
+    BookModel(
+      id: 'popular_2',
+      title: 'Cánh Buồm Đỏ Thắm',
+      author: 'Alexander Grin',
+      imageUrl: 'https://bizweb.dktcdn.net/100/418/570/products/1-0a8266fb-fa59-4322-82fc-3053ba5c25b4.jpg',
+      pageCount: 150,
+      publishedDate: '1923',
+      categories: ['Fiction', 'Romance'],
+      description: 'Cánh buồm đỏ thắm là một trong những tác phẩm nổi tiếng của văn học Nga.',
+    ),
+    BookModel(
+      id: 'popular_3',
+      title: 'Đắc Nhân Tâm',
+      author: 'Dale Carnegie',
+      imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/71vK0WVQ4rL.jpg',
+      pageCount: 320,
+      publishedDate: '1936',
+      categories: ['Self-Help', 'Psychology'],
+      description: 'Đắc nhân tâm là quyển sách nổi tiếng nhất, bán chạy nhất và có tầm ảnh hưởng nhất của mọi thời đại.',
+    ),
+  ];
+
   /// Gợi ý sách
   final List<BookModel> suggestedBooks = [
     BookModel(
