@@ -240,6 +240,15 @@ class BookRepository {
     if (_currentUserId == null) throw Exception("Cần đăng nhập");
 
     final bookRef = _firestore.collection('books').doc(bookId);
+    
+    // Lấy thông tin user từ Firestore để có tên chính xác
+    final userDoc = await _firestore.collection('users').doc(_currentUserId).get();
+    final userData = userDoc.data() ?? {};
+    final userName = userData['displayName'] ?? 
+                     userData['username'] ?? 
+                     _auth.currentUser?.displayName ?? 
+                     _auth.currentUser?.email?.split('@').first ?? 
+                     'Người dùng';
 
     // 1. Chạy Transaction để đảm bảo tính toán chính xác
     await _firestore.runTransaction((transaction) async {
@@ -261,7 +270,7 @@ class BookRepository {
       final reviewRef = bookRef.collection('reviews').doc();
       transaction.set(reviewRef, {
         'userId': _currentUserId,
-        'userName': _auth.currentUser?.displayName ?? 'Người dùng',
+        'userName': userName,
         'rating': rating,
         'comment': comment,
         'date': FieldValue.serverTimestamp(),
@@ -275,19 +284,44 @@ class BookRepository {
     });
   }
 
+
   // Đảm bảo bạn đã có hàm getReviews khớp với cấu trúc trên
   Future<List<ReviewModel>> getReviews(String bookId) async {
     try {
+      // Lấy danh sách bạn bè
+      final friendIds = <String>{};
+      if (_currentUserId != null) {
+        friendIds.add(_currentUserId!); // Thêm chính mình
+        
+        final friendsSnapshot = await _firestore
+            .collection('users')
+            .doc(_currentUserId)
+            .collection('friends')
+            .get();
+        
+        for (var doc in friendsSnapshot.docs) {
+          friendIds.add(doc.id);
+        }
+      }
+      
       final snapshot = await _firestore
           .collection('books')
           .doc(bookId)
           .collection('reviews')
           .orderBy('date', descending: true)
           .get();
-          
-     return snapshot.docs.map((doc) {
+      
+      // Filter reviews: chỉ lấy của bạn bè và chính mình
+      final allReviews = snapshot.docs.map((doc) {
         return ReviewModel.fromFirestore(doc.data(), doc.id);
       }).toList();
+      
+      // Nếu có danh sách bạn bè, filter theo đó
+      if (friendIds.isNotEmpty) {
+        return allReviews.where((review) => friendIds.contains(review.userId)).toList();
+      }
+      
+      return allReviews;
     } catch (e) {
       print("LỖI LẤY REVIEW: $e");
       return [];
