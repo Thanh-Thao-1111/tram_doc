@@ -35,7 +35,9 @@ class LibraryViewModel extends ChangeNotifier {
 
   List<BookModel> get libraryBooks {
     // Kệ "Muốn đọc" - filter by readingStatus = wantToRead
-    final list = _libraryBooks.where((b) => b.readingStatus == ReadingStatus.wantToRead).toList();
+    final list = _libraryBooks
+        .where((b) => b.readingStatus == ReadingStatus.wantToRead)
+        .toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
@@ -46,14 +48,18 @@ class LibraryViewModel extends ChangeNotifier {
 
   List<BookModel> get readingBooks {
     // Kệ "Đang đọc" - filter by readingStatus = reading
-    final list = _libraryBooks.where((b) => b.readingStatus == ReadingStatus.reading).toList();
+    final list = _libraryBooks
+        .where((b) => b.readingStatus == ReadingStatus.reading)
+        .toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
 
   List<BookModel> get finishedBooks {
     // Kệ "Đã đọc" - filter by readingStatus = completed
-    final list = _libraryBooks.where((b) => b.readingStatus == ReadingStatus.completed).toList();
+    final list = _libraryBooks
+        .where((b) => b.readingStatus == ReadingStatus.completed)
+        .toList();
     if (_localSearchQuery.isEmpty) return list;
     return list.where((b) => _matchesQuery(b)).toList();
   }
@@ -62,7 +68,8 @@ class LibraryViewModel extends ChangeNotifier {
   bool _matchesQuery(BookModel book) {
     if (_localSearchQuery.isEmpty) return true;
     final query = _localSearchQuery.toLowerCase();
-    return book.title.toLowerCase().contains(query) || book.author.toLowerCase().contains(query);
+    return book.title.toLowerCase().contains(query) ||
+        book.author.toLowerCase().contains(query);
   }
 
   void setLocalSearchQuery(String query) {
@@ -113,10 +120,11 @@ class LibraryViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       // Filter locally since BookRepository doesn't have searchBooks
-      _searchedBooks = _libraryBooks.where((b) =>
-        b.title.toLowerCase().contains(query.toLowerCase()) ||
-        b.author.toLowerCase().contains(query.toLowerCase())
-      ).toList();
+      _searchedBooks = _libraryBooks
+          .where((b) =>
+              b.title.toLowerCase().contains(query.toLowerCase()) ||
+              b.author.toLowerCase().contains(query.toLowerCase()))
+          .toList();
     } catch (e) {
       _searchedBooks = [];
     }
@@ -152,11 +160,11 @@ class LibraryViewModel extends ChangeNotifier {
   Future<void> updateReadingProgress(int newPage) async {
     if (_currentBook != null && _currentBook!.id != null) {
       _currentPage = newPage;
-      
+
       // Tự động xác định trạng thái đọc dựa trên tiến độ
       final totalPages = _currentBook!.pageCount ?? 0;
       ReadingStatus newStatus;
-      
+
       if (newPage <= 0) {
         // Trang 0 = Muốn đọc
         newStatus = ReadingStatus.wantToRead;
@@ -167,15 +175,16 @@ class LibraryViewModel extends ChangeNotifier {
         // Đang đọc giữa chừng = Đang đọc
         newStatus = ReadingStatus.reading;
       }
-      
+
       notifyListeners();
 
       // Cập nhật lên Firestore với cả currentPage và readingStatus
-      final statusString = newStatus == ReadingStatus.completed 
-          ? 'completed' 
+      final statusString = newStatus == ReadingStatus.completed
+          ? 'completed'
           : (newStatus == ReadingStatus.reading ? 'reading' : 'wantToRead');
-      
-      await _bookRepo.updateReadingProgress(_currentBook!.id!, newPage, statusString);
+
+      await _bookRepo.updateReadingProgress(
+          _currentBook!.id!, newPage, statusString);
 
       final index = _libraryBooks.indexWhere((b) => b.id == _currentBook!.id);
       if (index != -1) {
@@ -217,10 +226,12 @@ class LibraryViewModel extends ChangeNotifier {
   // ====================== NOTES & REVIEWS ======================
   Future<void> fetchNotes() async {
     if (_currentBook == null || _currentBook!.id == null) return;
-    
+
     try {
       final notesData = await _bookRepo.getNotes(_currentBook!.id!);
-      _notes = notesData.map((data) => NoteModel.fromFirestore(data, data['id'] ?? '')).toList();
+      _notes = notesData
+          .map((data) => NoteModel.fromFirestore(data, data['id'] ?? ''))
+          .toList();
     } catch (e) {
       print('Error fetching notes: $e');
       _notes = [];
@@ -230,7 +241,7 @@ class LibraryViewModel extends ChangeNotifier {
 
   Future<void> addUserNote(String content, int page) async {
     if (_currentBook == null || _currentBook!.id == null) return;
-    
+
     try {
       await _bookRepo.addNote(_currentBook!.id!, content, page);
       // Refresh notes list after adding
@@ -240,21 +251,66 @@ class LibraryViewModel extends ChangeNotifier {
     }
   }
 
+  // Thêm hàm này vào dưới hàm addUserNote
+  Future<void> updateUserNote(String noteId, String content, int page) async {
+    if (_currentBook == null || _currentBook!.id == null) return;
+
+    try {
+      // Gọi xuống Repository để cập nhật Firestore
+      await _bookRepo.updateNote(_currentBook!.id!, noteId, content, page);
+
+      // Sau khi update xong, tải lại danh sách ghi chú để UI cập nhật
+      await fetchNotes();
+    } catch (e) {
+      print('Error updating note: $e');
+    }
+  }
+
   Future<void> fetchReviews() async {
-    if (_currentBook == null) return;
-    // TODO: Implement reviews storage in Firestore
-    _reviews = [];
-    notifyListeners();
+    if (_currentBook == null || _currentBook!.id == null) return;
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Gọi Repository (đã trả về List<ReviewModel> ở Bước 1)
+      _reviews = await _bookRepo.getReviews(_currentBook!.id!);
+
+      print(" ViewModel đã tải xong ${_reviews.length} đánh giá");
+    } catch (e) {
+      print("Lỗi fetchReviews: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> addUserReview(String comment, int rating) async {
-    if (_currentBook == null) return;
-    // TODO: Implement reviews storage in Firestore
+    if (_currentBook == null || _currentBook!.id == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // 1. Gọi Repository để lưu lên Firebase (Bạn cần viết hàm này trong BookRepository)
+      await _bookRepo.addReview(
+        bookId: _currentBook!.id!,
+        comment: comment,
+        rating: rating,
+      );
+
+      // 2. QUAN TRỌNG: Tải lại danh sách review ngay lập tức
+      await fetchReviews();
+    } catch (e) {
+      print("Lỗi thêm đánh giá: $e");
+    }
+
+    _isLoading = false;
     notifyListeners();
   }
 
   // ====================== FLASHCARDS ======================
-  
+
   // TODO: Implement flashcards storage in Firestore
   void createFlashcard(String question, String answer) {
     // Stub implementation - flashcards functionality to be implemented

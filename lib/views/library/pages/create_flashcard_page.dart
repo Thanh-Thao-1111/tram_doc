@@ -1,41 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../viewmodels/library_viewmodel.dart'; // Import file gốc ở đây
+import '../../../models/book_model.dart';
+import '../../../viewmodels/library_viewmodel.dart';
+import '../../../repositories/card_repository.dart'; // <--- Import Repository để lưu thẻ
 
 class CreateFlashcardPage extends StatefulWidget {
-  const CreateFlashcardPage({super.key});
+  final BookModel? book; // <--- 1. Thêm biến book để nhận từ trang trước
+
+  const CreateFlashcardPage({super.key, this.book}); // <--- 2. Thêm vào constructor
 
   @override
   State<CreateFlashcardPage> createState() => _CreateFlashcardPageState();
 }
 
 class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
-  // 1. Khởi tạo Key quản lý Form
   final _formKey = GlobalKey<FormState>();
+  
+  // Gọi Repository để xử lý lưu vào Firebase
+  final _cardRepo = CardRepository(); 
 
-  // Biến lưu dữ liệu
   String _question = '';
   String _answer = '';
+  bool _isSaving = false; // Biến để hiện vòng xoay khi đang lưu
 
-  // Hàm xử lý Lưu
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      // Gọi hàm từ ViewModel gốc
-      context.read<LibraryViewModel>().createFlashcard(_question, _answer);
+      // Lấy ID sách (Ưu tiên lấy từ tham số truyền vào, nếu null thì lấy từ ViewModel)
+      final vmBook = context.read<LibraryViewModel>().currentBook;
+      final targetBook = widget.book ?? vmBook;
 
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Đã tạo thẻ mới thành công!")),
-      );
+      if (targetBook == null || targetBook.id == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Lỗi: Không xác định được sách để thêm thẻ!")),
+        );
+        return;
+      }
+
+      setState(() => _isSaving = true);
+
+      try {
+        // --- GỌI API LƯU THẺ VÀO FIREBASE ---
+        await _cardRepo.addCard(
+          question: _question,
+          answer: _answer,
+          bookId: targetBook.id!, // Truyền ID sách vào đây
+        );
+
+        if (!mounted) return;
+        
+        Navigator.pop(context); // Đóng trang
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đã tạo Flashcard thành công!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red),
+        );
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ưu tiên hiển thị sách được truyền vào (widget.book), nếu không có thì lấy sách đang chọn (viewModel)
     final viewModel = context.watch<LibraryViewModel>();
-    final book = viewModel.currentBook;
+    final displayBook = widget.book ?? viewModel.currentBook;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -52,7 +89,9 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
-          TextButton(
+          _isSaving 
+          ? const Center(child: Padding(padding: EdgeInsets.only(right: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+          : TextButton(
             onPressed: _submitForm,
             child: const Text(
               "Lưu",
@@ -93,7 +132,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            book?.title ?? "Chưa chọn sách",
+                            displayBook?.title ?? "Chưa chọn sách",
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -107,7 +146,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
               const SizedBox(height: 24),
 
               // --- INPUT MẶT TRƯỚC ---
-              const Text("Mặt trước", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text("Mặt trước (Câu hỏi)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -123,8 +162,8 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
                     hintText: "Nhập câu hỏi...",
                     border: InputBorder.none,
                   ),
-                  // Gọi validate từ ViewModel
-                  validator: (value) => viewModel.validateFlashcardSide(value, "mặt trước"),
+                  // Gọi validate từ ViewModel hoặc tự check
+                  validator: (value) => (value == null || value.isEmpty) ? "Vui lòng nhập mặt trước" : null,
                   onSaved: (value) => _question = value!.trim(),
                 ),
               ),
@@ -132,7 +171,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
               const SizedBox(height: 24),
 
               // --- INPUT MẶT SAU ---
-              const Text("Mặt sau", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text("Mặt sau (Đáp án)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -148,8 +187,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
                     hintText: "Nhập câu trả lời...",
                     border: InputBorder.none,
                   ),
-                  // Gọi validate từ ViewModel
-                  validator: (value) => viewModel.validateFlashcardSide(value, "mặt sau"),
+                  validator: (value) => (value == null || value.isEmpty) ? "Vui lòng nhập mặt sau" : null,
                   onSaved: (value) => _answer = value!.trim(),
                 ),
               ),
@@ -161,7 +199,7 @@ class _CreateFlashcardPageState extends State<CreateFlashcardPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _submitForm,
+                  onPressed: _isSaving ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

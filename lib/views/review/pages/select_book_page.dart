@@ -1,8 +1,8 @@
-// lib/views/review/pages/select_book_page.dart
 import 'package:flutter/material.dart';
 import 'flashcard_player_page.dart'; 
 import '../../../viewmodels/review_viewmodel.dart';
 import '../../../models/book_model.dart';
+import '../../../repositories/card_repository.dart'; // <--- 1. Thêm Import này
 
 class SelectBookPage extends StatefulWidget {
   const SelectBookPage({super.key});
@@ -100,13 +100,53 @@ class _SelectBookPageState extends State<SelectBookPage> {
 
   Widget _buildBookListItem(BuildContext context, BookModel book) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FlashcardPlayerPage(mode: "Ôn: ${book.title}"),
-          ),
+      // 🔥 2. SỬA LOGIC ONTAP TẠI ĐÂY
+      onTap: () async {
+        // Hiển thị loading xoay vòng để người dùng biết đang tải
+        showDialog(
+          context: context, 
+          barrierDismissible: false,
+          builder: (ctx) => const Center(child: CircularProgressIndicator())
         );
+
+        try {
+          // Gọi Repository lấy thẻ của sách này
+          final repo = CardRepository();
+          final cards = await repo.getCardsByBookId(book.id ?? '');
+
+          // Tắt loading
+          if (context.mounted) Navigator.pop(context);
+
+          if (cards.isNotEmpty) {
+            // Nếu có thẻ -> Chuyển sang trang học và TRUYỀN DATA
+            if (context.mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FlashcardPlayerPage(
+                    mode: "BOOK_REVIEW", // Đánh dấu chế độ
+                    cards: cards,        // Truyền danh sách thẻ vừa lấy
+                  ),
+                ),
+              );
+            }
+          } else {
+            // Nếu không có thẻ -> Báo lỗi
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Sách '${book.title}' chưa có thẻ nào! Hãy tạo thẻ trước.")),
+              );
+            }
+          }
+        } catch (e) {
+          // Xử lý lỗi
+          if (context.mounted) {
+            Navigator.pop(context); // Tắt loading
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Lỗi tải dữ liệu: $e")),
+            );
+          }
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -118,7 +158,7 @@ class _SelectBookPageState extends State<SelectBookPage> {
         ),
         child: Row(
           children: [
-            // Ảnh bìa sách từ URL Firebase/Google Books
+            // Ảnh bìa sách
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(

@@ -1,91 +1,171 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/card_model.dart';
+import '../models/card_model.dart'; 
 
 class CardRepository {
-  // KHAI BÁO BIẾN _firestore Ở ĐÂY ĐỂ HẾT LỖI
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Lấy UID của User hiện tại
   String? get _currentUserId => _auth.currentUser?.uid;
 
-  /// 1. Lấy danh sách thẻ đến hạn ôn tập (nextReviewDate <= Now)
-  Future<List<FlashcardData>> getDueCards() async {
+  // =========================================================
+  // 1. HÀM THÊM CARD (CÁI BẠN ĐANG THIẾU)
+  // =========================================================
+  Future<void> addCard({
+    required String question,
+    required String answer,
+    required String bookId,
+  }) async {
+    if (_currentUserId == null) throw Exception("Chưa đăng nhập");
+
+    // Lưu vào collection 'flashcards'
+    await _firestore.collection('flashcards').add({
+      'userId': _currentUserId,
+      'bookId': bookId,          // Lưu ID sách để lọc
+      'front': question,         // Câu hỏi
+      'back': answer,            // Câu trả lời
+      'createdAt': FieldValue.serverTimestamp(),
+      
+      // Các trường cho thuật toán Spaced Repetition (SM-2)
+      'nextReviewDate': FieldValue.serverTimestamp(), // Học ngay lập tức
+      'interval': 0,    // Khoảng cách ngày giữa các lần ôn
+      'easeFactor': 2.5, // Độ khó (mặc định 2.5)
+      'repetitions': 0, // Số lần lặp lại liên tiếp đúng
+    });
+  }
+
+  // =========================================================
+  // 2. LẤY DANH SÁCH THẺ CẦN ÔN (DUE CARDS)
+  // =========================================================
+  Future<List<CardModel>> getDueCards() async {
     if (_currentUserId == null) return [];
 
     try {
-      final now = DateTime.now();
+      final now = Timestamp.now();
       
       final querySnapshot = await _firestore
           .collection('flashcards')
-          // Lọc theo User để đảm bảo bảo mật
-          .where('userId', isEqualTo: _currentUserId) 
-          // Lọc theo thời gian ôn tập (như trong ảnh Firebase của bạn)
-          .where('nextReviewDate', isLessThanOrEqualTo: now)
+          .where('userId', isEqualTo: _currentUserId)
+          .where('nextReviewDate', isLessThanOrEqualTo: now) // Lấy thẻ đã đến hạn
           .get();
 
       return querySnapshot.docs
-          .map((doc) => FlashcardData.fromFirestore(doc))
+          .map((doc) => CardModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      throw Exception('Không thể tải thẻ ôn tập: $e');
+      print('Lỗi tải thẻ ôn tập: $e');
+      return [];
     }
   }
 
-  /// 2. Ghi lịch sử ôn tập vào collection flashcard_reviews
+  // =========================================================
+  // 3. LOG REVIEW & TÍNH NGÀY ÔN TIẾP THEO (SM-2)
+  // =========================================================
   Future<void> logReview(String cardId, int rating) async {
+    // rating: 1 (Khó/Quên), 3 (Tốt), 5 (Dễ)
     if (_currentUserId == null) return;
 
     try {
+      // B1: Lấy thông tin hiện tại của thẻ
+      final cardRef = _firestore.collection('flashcards').doc(cardId);
+      final doc = await cardRef.get();
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+      int reps = data['repetitions'] ?? 0;
+      double ease = (data['easeFactor'] ?? 2.5).toDouble();
+      int interval = data['interval'] ?? 0;
+
+      // B2: Tính toán thuật toán SM-2 (SuperMemo-2)
+      if (rating >= 3) {
+        // Nếu nhớ bài
+        if (reps == 0) {
+          interval = 1;
+        } else if (reps == 1) {
+          interval = 6;
+        } else {
+          interval = (interval * ease).round();
+        }
+        reps++;
+        
+        // Điều chỉnh độ khó (Ease Factor)
+        ease = ease + (0.1 - (5 - rating) * (0.08 + (5 - rating) * 0.02));
+        if (ease < 1.3) ease = 1.3;
+      } else {
+        // Nếu quên bài -> Reset về đầu
+        reps = 0;
+        interval = 1;
+      }
+
+      // B3: Cập nhật thẻ với ngày ôn mới
+      final nextReviewDate = DateTime.now().add(Duration(days: interval));
+
+      await cardRef.update({
+        'repetitions': reps,
+        'easeFactor': ease,
+        'interval': interval,
+        'nextReviewDate': Timestamp.fromDate(nextReviewDate),
+      });
+
+      // B4: Lưu lịch sử vào 'flashcard_reviews'
       await _firestore.collection('flashcard_reviews').add({
         'flashcardId': cardId,
         'userId': _currentUserId,
         'rating': rating,
         'reviewDate': FieldValue.serverTimestamp(),
       });
-      
-      // Sau khi log review, bạn có thể thêm logic cập nhật nextReviewDate 
-      // cho Flashcard tại đây để hoàn thiện thuật toán Spaced Repetition.
+
     } catch (e) {
       throw Exception('Không thể lưu lịch sử ôn tập: $e');
     }
   }
 
-  /// 3. Đếm số lượng thẻ cần ôn hôm nay (Cho Dashboard)
-  Future<int> getDueCardsCount() async {
-    if (_currentUserId == null) return 0;
-    
+  // =========================================================
+  // 4. LẤY NGÀY ĐÃ HỌC (CHO STREAK)
+  // =========================================================
+  Future<List<DateTime>> getCompletedDates() async {
+    if (_currentUserId == null) return [];
     try {
-      final now = DateTime.now();
+      // Lấy log học tập của user
       final snapshot = await _firestore
-          .collection('flashcards')
-          .where('nextReviewDate', isLessThanOrEqualTo: now)
+          .collection('flashcard_reviews')
+          .where('userId', isEqualTo: _currentUserId)
+          .orderBy('reviewDate', descending: true)
+          .limit(50) 
           .get();
-          
-      return snapshot.docs.length;
+
+      // Chuyển đổi sang DateTime
+      return snapshot.docs.map((doc) {
+        final ts = doc.data()['reviewDate'] as Timestamp?;
+        if (ts == null) return DateTime.now();
+        final date = ts.toDate();
+        return DateTime(date.year, date.month, date.day);
+      }).toSet().toList(); // Xóa trùng lặp
     } catch (e) {
-      return 0;
+      // Có thể lỗi do chưa đánh index trong Firestore, trả về list rỗng tạm thời
+      print("Lỗi lấy streak: $e");
+      return [];
     }
   }
 
-  // lib/repositories/card_repository.dart
-Future<List<DateTime>> getCompletedDates() async {
-  if (_currentUserId == null) return [];
-  try {
-    // Lấy tất cả các bản ghi review của user này
-    final snapshot = await _firestore
-        .collection('flashcard_reviews')
-        .where('userId', isEqualTo: _currentUserId)
-        .get();
+  Future<List<CardModel>> getCardsByBookId(String bookId) async {
+    if (_currentUserId == null) return [];
+    
+    try {
+      // Lấy TẤT CẢ thẻ của cuốn sách này
+      // (Bao gồm cả thẻ chưa đến hạn, để người dùng có thể ôn tập bất cứ lúc nào nếu muốn)
+      final snapshot = await _firestore
+          .collection('flashcards') 
+          .where('userId', isEqualTo: _currentUserId)
+          .where('bookId', isEqualTo: bookId) // Lọc theo ID sách
+          .get();
 
-    // Chuyển đổi Timestamp thành DateTime và chỉ giữ lại Ngày/Tháng/Năm
-    return snapshot.docs.map((doc) {
-      DateTime date = (doc.data()['reviewDate'] as Timestamp).toDate();
-      return DateTime(date.year, date.month, date.day);
-    }).toSet().toList(); // toSet để xóa các thẻ trùng ngày học
-  } catch (e) {
-    return [];
+      return snapshot.docs
+          .map((doc) => CardModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print("Lỗi lấy thẻ theo sách: $e");
+      return [];
+    }
   }
-}
 }

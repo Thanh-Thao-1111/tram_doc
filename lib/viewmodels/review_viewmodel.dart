@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/card_model.dart';
-import '../models/book_model.dart'; 
+import '../models/book_model.dart';
 import '../repositories/card_repository.dart';
-import '../repositories/book_repository.dart'; 
+import '../repositories/book_repository.dart';
 
 // ==========================================
 // CLASS 1: Menu Dashboard (ReviewPage)
@@ -10,7 +10,7 @@ import '../repositories/book_repository.dart';
 class ReviewDashboardViewModel extends ChangeNotifier {
   final CardRepository _repository = CardRepository();
 
-  int _cardsToReview = 0; 
+  int _cardsToReview = 0;
   int _cardsMistake = 0;
   bool _isLoading = true;
   List<DateTime> _completedDates = []; // Lưu danh sách ngày đã học thật
@@ -19,7 +19,7 @@ class ReviewDashboardViewModel extends ChangeNotifier {
   int get cardsMistake => _cardsMistake;
   bool get isLoading => _isLoading;
   List<DateTime> get completedDates => _completedDates; // UI sẽ gọi cái này
-  
+
   ReviewDashboardViewModel() {
     refreshCounts();
   }
@@ -33,13 +33,12 @@ class ReviewDashboardViewModel extends ChangeNotifier {
       // 1. Lấy danh sách thẻ đến hạn từ Repository
       final dueCards = await _repository.getDueCards();
       _cardsToReview = dueCards.length;
-      
+
       // 2. Lấy dữ liệu ngày đã ôn tập để hiển thị Streak (Đã sửa ở đây)
       _completedDates = await _repository.getCompletedDates();
-      
+
       // Giả sử logic cho cardsMistake (có thể mở rộng sau)
-      _cardsMistake = 0; 
-      
+      _cardsMistake = 0;
     } catch (e) {
       debugPrint("Lỗi khi cập nhật Dashboard: $e");
     } finally {
@@ -70,7 +69,7 @@ class ReviewDashboardViewModel extends ChangeNotifier {
 class FlashcardPlayerViewModel extends ChangeNotifier {
   final CardRepository _repository = CardRepository();
 
-  List<FlashcardData> _cards = [];
+  List<CardModel> _cards = [];
   int _currentIndex = 0;
   bool _isFlipped = false;
   bool _isFinished = false;
@@ -80,8 +79,8 @@ class FlashcardPlayerViewModel extends ChangeNotifier {
   int _goodCount = 0;
   int _hardCount = 0;
 
-  List<FlashcardData> get cards => _cards;
-  FlashcardData get currentCard => _cards[_currentIndex];
+  List<CardModel> get cards => _cards;
+  CardModel get currentCard => _cards[_currentIndex];
   int get currentIndex => _currentIndex;
   int get totalCards => _cards.length;
   bool get isFlipped => _isFlipped;
@@ -92,9 +91,7 @@ class FlashcardPlayerViewModel extends ChangeNotifier {
   int get goodCount => _goodCount;
   int get hardCount => _hardCount;
 
-  FlashcardPlayerViewModel() {
-    fetchCardsFromFirebase();
-  }
+  FlashcardPlayerViewModel();
 
   Future<void> fetchCardsFromFirebase() async {
     _isLoading = true;
@@ -113,6 +110,13 @@ class FlashcardPlayerViewModel extends ChangeNotifier {
 
   void flipCard() {
     _isFlipped = !_isFlipped;
+    notifyListeners();
+  }
+
+  void setCardsManually(List<CardModel> cards) {
+    _cards = cards;
+    _isLoading = false;
+    if (_cards.isEmpty) _isFinished = true;
     notifyListeners();
   }
 
@@ -147,8 +151,9 @@ class FlashcardPlayerViewModel extends ChangeNotifier {
 // ==========================================
 class SelectBookViewModel extends ChangeNotifier {
   final BookRepository _bookRepository = BookRepository();
+  final CardRepository _cardRepository = CardRepository();
 
-  List<BookModel> _allBooks = []; 
+  List<BookModel> _allBooks = [];
   List<BookModel> _filteredBooks = [];
   bool _isLoading = true;
 
@@ -186,5 +191,15 @@ class SelectBookViewModel extends ChangeNotifier {
       }).toList();
     }
     notifyListeners();
+  }
+  Future<List<CardModel>> getCardsForBook(String bookId) async {
+    try {
+      // Gọi sang Repository để lấy thẻ theo ID sách
+      final cards = await _cardRepository.getCardsByBookId(bookId);
+      return cards;
+    } catch (e) {
+      debugPrint("Lỗi lấy thẻ theo sách: $e");
+      return [];
+    }
   }
 }
