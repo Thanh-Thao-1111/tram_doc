@@ -222,10 +222,25 @@ erDiagram
 | `interval` | `int` | Khoảng cách ôn tập (ngày) |
 | `repetitions` | `int` | Số lần đã ôn |
 | `nextReviewDate` | `timestamp?` | Ngày ôn tập tiếp theo |
+| `createdAt` | `timestamp` | Ngày tạo thẻ |
 
 ---
 
-### 4. 📝 Collection: `posts`
+### 4. 📊 Collection: `flashcard_reviews`
+
+> Lịch sử ôn tập flashcard (dùng để tính streak)
+
+| Field | Type | Mô tả |
+|-------|------|-------|
+| `id` | `string` | ID log |
+| `flashcardId` | `string` | ID thẻ đã ôn |
+| `userId` | `string` | ID người ôn |
+| `rating` | `int` | Điểm đánh giá (1-5) |
+| `reviewDate` | `timestamp` | Ngày ôn tập |
+
+---
+
+### 5. 📝 Collection: `posts`
 
 | Field | Type | Mô tả |
 |-------|------|-------|
@@ -256,7 +271,7 @@ erDiagram
 
 ---
 
-### 5. 🤝 Collection: `friend_requests`
+### 6. 🤝 Collection: `friend_requests`
 
 | Field | Type | Mô tả |
 |-------|------|-------|
@@ -268,6 +283,21 @@ erDiagram
 | `toUserId` | `string` | ID người nhận |
 | `status` | `string` | Trạng thái: `pending`, `accepted`, `rejected` |
 | `createdAt` | `timestamp` | Ngày gửi |
+
+---
+
+### 📌 Sub-collection bổ sung trong `users`
+
+#### Sub-collection: `users/{uid}/readingActivities`
+
+> Hoạt động đọc sách hàng ngày (dùng để tính streak)
+
+| Field | Type | Mô tả |
+|-------|------|-------|
+| `id` | `string` | ID = ngày (yyyy-MM-dd) |
+| `date` | `timestamp` | Ngày hoạt động |
+| `minutesRead` | `int` | Số phút đã đọc |
+| `updatedAt` | `timestamp` | Lần cập nhật cuối |
 
 ---
 
@@ -284,6 +314,10 @@ service cloud.firestore {
       allow write: if request.auth.uid == userId;
       
       match /friends/{friendId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+      
+      match /readingActivities/{activityId} {
         allow read, write: if request.auth.uid == userId;
       }
     }
@@ -305,6 +339,11 @@ service cloud.firestore {
     
     // Flashcards
     match /flashcards/{cardId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+    
+    // Flashcard Reviews (lịch sử ôn tập)
+    match /flashcard_reviews/{reviewId} {
       allow read, write: if request.auth.uid == resource.data.userId;
     }
     
@@ -339,6 +378,10 @@ service cloud.firestore {
 | Collection | Fields | Type |
 |------------|--------|------|
 | `books` | `userId`, `createdAt` (desc) | Composite |
+| `books` | `userId`, `readingStatus` | Composite |
 | `posts` | `createdAt` (desc) | Single |
-| `flashcards` | `userId`, `bookId`, `nextReviewDate` | Composite |
+| `flashcards` | `userId`, `bookId` | Composite |
+| `flashcards` | `userId`, `nextReviewDate` | Composite |
+| `flashcard_reviews` | `userId`, `reviewDate` (desc) | Composite |
 | `friend_requests` | `toUserId`, `status` | Composite |
+
