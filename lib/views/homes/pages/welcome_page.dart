@@ -20,7 +20,7 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 60),
 
               // LOGO + APP NAME
               Row(
@@ -29,13 +29,13 @@ class WelcomeScreen extends StatelessWidget {
                   Icon(
                     Icons.menu_book,
                     color: primaryGreen,
-                    size: 28,
+                    size: 32,
                   ),
                   SizedBox(width: 8),
                   Text(
                     'Trạm Đọc',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
                       color: primaryGreen,
                     ),
@@ -48,7 +48,7 @@ class WelcomeScreen extends StatelessWidget {
               Text(
                 'Trợ lý Đọc sách Chủ động & Ghi nhớ',
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 16,
                   color: Colors.grey,
                 ),
                 textAlign: TextAlign.center,
@@ -60,7 +60,7 @@ class WelcomeScreen extends StatelessWidget {
               // Ảnh và text ở giữa màn hình
               Image.asset(
                 AppImages.welcome,
-                height: 240,
+                height: 320,
                 fit: BoxFit.contain,
               ),
 
